@@ -1,0 +1,43 @@
+{
+  "collectionName": "components_page_home_section",
+  "info": {
+    "displayName": "Home Section",
+    "description": "Dynamic homepage section with content and styling"
+  },
+  "attributes": {
+    "sectionName": {
+      "type": "enumeration",
+      "enum": ["header", "hero", "about", "services", "categories", "products", "testimonials", "faq", "contact", "footer"],
+      "required": true
+    },
+    "title": { "type": "string" },
+    "subtitle": { "type": "string" },
+    "description": { "type": "text" },
+    "layoutType": {
+      "type": "enumeration",
+      "enum": ["stack", "split", "grid"],
+      "default": "stack"
+    },
+    "displayOrder": { "type": "integer", "default": 0 },
+    "isActive": { "type": "boolean", "default": true },
+    "borderRadius": { "type": "integer" },
+    "containerWidth": { "type": "string" },
+    "buttonSettings": { "type": "component", "component": "shared.button-settings", "repeatable": false },
+    "secondaryButtonSettings": { "type": "component", "component": "shared.button-settings", "repeatable": false },
+    "colorSettings": { "type": "component", "component": "shared.color-settings", "repeatable": false },
+    "titleTypography": { "type": "component", "component": "shared.typography-settings", "repeatable": false },
+    "subtitleTypography": { "type": "component", "component": "shared.typography-settings", "repeatable": false },
+    "bodyTypography": { "type": "component", "component": "shared.typography-settings", "repeatable": false },
+    "spacingSettings": { "type": "component", "component": "shared.spacing-settings", "repeatable": false },
+    "imageSettings": { "type": "component", "component": "shared.image-settings", "repeatable": false },
+    "seoSettings": { "type": "component", "component": "shared.seo-settings", "repeatable": false },
+    "statItems": { "type": "component", "component": "shared.stat-item", "repeatable": true },
+    "ministryItems": { "type": "component", "component": "shared.ministry-item", "repeatable": true },
+    "newsItems": { "type": "component", "component": "shared.news-item", "repeatable": true },
+    "videoItems": { "type": "component", "component": "shared.video-item", "repeatable": true },
+    "donationItems": { "type": "component", "component": "shared.donation-amount", "repeatable": true },
+    "items": { "type": "json" },
+    "featuredItems": { "type": "json" },
+    "mediaItems": { "type": "json" }
+  }
+}

@@ -1,0 +1,12 @@
+{
+  "collectionName": "components_shared_seo_settings",
+  "info": {
+    "displayName": "SEO Settings"
+  },
+  "attributes": {
+    "metaTitle": { "type": "string" },
+    "metaDescription": { "type": "text" },
+    "keywords": { "type": "text" },
+    "ogImage": { "type": "media", "allowedTypes": ["images"], "multiple": false }
+  }
+}

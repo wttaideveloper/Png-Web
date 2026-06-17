@@ -1,0 +1,15 @@
+{
+  "collectionName": "components_page_header_settings",
+  "info": {
+    "displayName": "Header Settings"
+  },
+  "attributes": {
+    "logo": { "type": "media", "allowedTypes": ["images"], "multiple": false },
+    "menuItems": { "type": "component", "component": "shared.menu-item", "repeatable": true },
+    "backgroundColor": { "type": "string" },
+    "textColor": { "type": "string" },
+    "fontFamily": { "type": "string" },
+    "stickyHeader": { "type": "boolean", "default": false },
+    "ctaButton": { "type": "component", "component": "shared.button-settings", "repeatable": false }
+  }
+}

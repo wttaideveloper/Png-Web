@@ -1,0 +1,15 @@
+{
+  "collectionName": "components_page_footer_settings",
+  "info": {
+    "displayName": "Footer Settings"
+  },
+  "attributes": {
+    "logo": { "type": "media", "allowedTypes": ["images"], "multiple": false },
+    "description": { "type": "text" },
+    "footerLinks": { "type": "component", "component": "shared.menu-item", "repeatable": true },
+    "socialLinks": { "type": "component", "component": "shared.social-link", "repeatable": true },
+    "copyrightText": { "type": "string" },
+    "backgroundColor": { "type": "string" },
+    "textColor": { "type": "string" }
+  }
+}

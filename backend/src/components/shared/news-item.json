@@ -1,0 +1,12 @@
+{
+  "collectionName": "components_shared_news_items",
+  "info": { "displayName": "News Item", "description": "News and announcement entry" },
+  "attributes": {
+    "tag": { "type": "string" },
+    "date": { "type": "string" },
+    "title": { "type": "string", "required": true },
+    "excerpt": { "type": "text" },
+    "link": { "type": "string" },
+    "image": { "type": "media", "allowedTypes": ["images"], "multiple": false }
+  }
+}

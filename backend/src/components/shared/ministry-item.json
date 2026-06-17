@@ -1,0 +1,12 @@
+{
+  "collectionName": "components_shared_ministry_items",
+  "info": { "displayName": "Ministry Item", "description": "Ministry card content" },
+  "attributes": {
+    "title": { "type": "string", "required": true },
+    "description": { "type": "text" },
+    "buttonText": { "type": "string" },
+    "link": { "type": "string" },
+    "image": { "type": "media", "allowedTypes": ["images"], "multiple": false },
+    "icon": { "type": "media", "allowedTypes": ["images"], "multiple": false }
+  }
+}

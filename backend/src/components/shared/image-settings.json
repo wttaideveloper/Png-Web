@@ -1,0 +1,11 @@
+{
+  "collectionName": "components_shared_image_settings",
+  "info": {
+    "displayName": "Image Settings"
+  },
+  "attributes": {
+    "image": { "type": "media", "allowedTypes": ["images"], "multiple": false },
+    "icon": { "type": "media", "allowedTypes": ["images"], "multiple": false },
+    "altText": { "type": "string" }
+  }
+}

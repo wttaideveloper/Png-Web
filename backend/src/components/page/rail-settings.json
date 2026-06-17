@@ -1,0 +1,10 @@
+{
+  "collectionName": "components_page_rail_settings",
+  "info": { "displayName": "Seventh Rail Settings", "description": "Right-side seventh-day rail styling" },
+  "attributes": {
+    "backgroundColor": { "type": "string", "default": "#f08a16" },
+    "width": { "type": "string", "default": "132px" },
+    "showLogo": { "type": "boolean", "default": true },
+    "logoColor": { "type": "string", "default": "#ffffff" }
+  }
+}

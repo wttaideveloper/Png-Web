@@ -1,0 +1,12 @@
+{
+  "collectionName": "components_shared_typography_settings",
+  "info": {
+    "displayName": "Typography Settings"
+  },
+  "attributes": {
+    "fontFamily": { "type": "string" },
+    "fontSize": { "type": "string" },
+    "fontWeight": { "type": "string" },
+    "lineHeight": { "type": "string" }
+  }
+}

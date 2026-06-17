@@ -1,0 +1,14 @@
+{
+  "collectionName": "components_shared_button_settings",
+  "info": {
+    "displayName": "Button Settings"
+  },
+  "attributes": {
+    "text": { "type": "string" },
+    "link": { "type": "string" },
+    "backgroundColor": { "type": "string" },
+    "textColor": { "type": "string" },
+    "borderRadius": { "type": "integer" },
+    "padding": { "type": "string" }
+  }
+}

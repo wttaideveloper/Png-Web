@@ -1,0 +1,25 @@
+{
+  "collectionName": "components_shared_theme_settings",
+  "info": {
+    "displayName": "Theme Settings",
+    "description": "Global colors, fonts, and layout tokens"
+  },
+  "attributes": {
+    "primaryColor": { "type": "string", "default": "#f08a16" },
+    "secondaryColor": { "type": "string", "default": "#072b52" },
+    "accentOrange": { "type": "string", "default": "#f08a16" },
+    "navyColor": { "type": "string", "default": "#072b52" },
+    "tealColor": { "type": "string", "default": "#0b6f7d" },
+    "backgroundColor": { "type": "string", "default": "#efefea" },
+    "textColor": { "type": "string", "default": "#1f2530" },
+    "fontFamily": { "type": "string", "default": "Inter, system-ui, sans-serif" },
+    "headingFontFamily": { "type": "string", "default": "Georgia, Times New Roman, serif" },
+    "headingFontSize": { "type": "string", "default": "2.8rem" },
+    "bodyFontSize": { "type": "string", "default": "1rem" },
+    "borderRadius": { "type": "string", "default": "0px" },
+    "containerWidth": { "type": "string", "default": "1180px" },
+    "sectionSpacing": { "type": "string", "default": "80px" },
+    "buttonStyle": { "type": "component", "component": "shared.button-settings", "repeatable": false },
+    "cardStyle": { "type": "component", "component": "shared.spacing-settings", "repeatable": false }
+  }
+}

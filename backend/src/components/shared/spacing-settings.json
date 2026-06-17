@@ -1,0 +1,11 @@
+{
+  "collectionName": "components_shared_spacing_settings",
+  "info": {
+    "displayName": "Spacing Settings"
+  },
+  "attributes": {
+    "padding": { "type": "string" },
+    "margin": { "type": "string" },
+    "sectionSpacing": { "type": "string" }
+  }
+}

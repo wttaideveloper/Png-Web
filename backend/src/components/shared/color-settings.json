@@ -1,0 +1,12 @@
+{
+  "collectionName": "components_shared_color_settings",
+  "info": {
+    "displayName": "Color Settings"
+  },
+  "attributes": {
+    "backgroundColor": { "type": "string" },
+    "textColor": { "type": "string" },
+    "primaryColor": { "type": "string" },
+    "secondaryColor": { "type": "string" }
+  }
+}

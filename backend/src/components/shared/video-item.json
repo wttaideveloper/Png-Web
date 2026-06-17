@@ -1,0 +1,12 @@
+{
+  "collectionName": "components_shared_video_items",
+  "info": { "displayName": "Video Item", "description": "Featured video entry" },
+  "attributes": {
+    "title": { "type": "string", "required": true },
+    "description": { "type": "string" },
+    "duration": { "type": "string" },
+    "link": { "type": "string" },
+    "thumbnail": { "type": "media", "allowedTypes": ["images"], "multiple": false },
+    "video": { "type": "media", "allowedTypes": ["videos"], "multiple": false }
+  }
+}

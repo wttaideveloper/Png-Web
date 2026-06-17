@@ -1,0 +1,25 @@
+{
+  "name": "island-mission-backend",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Strapi backend for dynamic homepage",
+  "scripts": {
+    "develop": "strapi develop",
+    "start": "strapi start",
+    "build": "strapi build"
+  },
+  "dependencies": {
+    "@strapi/plugin-users-permissions": "5.48.0",
+    "@strapi/strapi": "5.48.0",
+    "better-sqlite3": "^12.11.1",
+    "esbuild": "^0.28.1",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "react-router-dom": "^6.30.4",
+    "sqlite3": "latest",
+    "styled-components": "^6.4.2"
+  },
+  "strapi": {
+    "uuid": "home-page-dynamic-template"
+  }
+}

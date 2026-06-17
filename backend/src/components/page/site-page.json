@@ -1,0 +1,27 @@
+{
+  "collectionName": "components_page_site_pages",
+  "info": {
+    "displayName": "Site Page",
+    "description": "Custom site page with editable content"
+  },
+  "attributes": {
+    "title": { "type": "string" },
+    "slug": { "type": "string" },
+    "link": { "type": "string" },
+    "pageType": {
+      "type": "enumeration",
+      "enum": ["content", "link"],
+      "default": "content"
+    },
+    "eyebrow": { "type": "string" },
+    "body": { "type": "text" },
+    "visible": { "type": "boolean", "default": true },
+    "showInHeader": { "type": "boolean", "default": true },
+    "showInFooter": { "type": "boolean", "default": false },
+    "heroImage": {
+      "type": "media",
+      "multiple": false,
+      "allowedTypes": ["images"]
+    }
+  }
+}

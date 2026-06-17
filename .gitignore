@@ -1,0 +1,29 @@
+# Dependencies
+node_modules/
+
+# Environment & secrets
+.env
+.env.local
+.env.*.local
+!.env.example
+
+# Build output
+dist/
+build/
+.cache/
+.tmp/
+
+# Strapi
+backend/.tmp/
+backend/public/uploads/*
+!backend/public/uploads/.gitkeep
+
+# Logs & OS
+*.log
+.DS_Store
+Thumbs.db
+
+# IDE / Cursor workspace artifacts
+terminals/
+canvases/
+.agent-transcripts/

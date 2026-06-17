@@ -1,0 +1,46 @@
+{
+  "kind": "singleType",
+  "collectionName": "home_pages",
+  "info": {
+    "singularName": "home-page",
+    "pluralName": "home-pages",
+    "displayName": "Home Page",
+    "description": "Manage all homepage content, colors, fonts, and section order"
+  },
+  "options": {
+    "draftAndPublish": true
+  },
+  "attributes": {
+    "globalTheme": {
+      "type": "component",
+      "component": "shared.theme-settings",
+      "repeatable": false
+    },
+    "railSettings": {
+      "type": "component",
+      "component": "page.rail-settings",
+      "repeatable": false
+    },
+    "headerSettings": {
+      "type": "component",
+      "component": "page.header-settings",
+      "repeatable": false
+    },
+    "footerSettings": {
+      "type": "component",
+      "component": "page.footer-settings",
+      "repeatable": false
+    },
+    "sections": {
+      "type": "component",
+      "component": "page.home-section",
+      "repeatable": true
+    },
+    "sitePages": {
+      "type": "component",
+      "component": "page.site-page",
+      "repeatable": true
+    },
+    "seoSettings": { "type": "component", "component": "shared.seo-settings", "repeatable": false }
+  }
+}

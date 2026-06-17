@@ -1,0 +1,8 @@
+{
+  "collectionName": "components_shared_donation_amounts",
+  "info": { "displayName": "Donation Amount", "description": "Donation chip amount label" },
+  "attributes": {
+    "amount": { "type": "string", "required": true },
+    "link": { "type": "string" }
+  }
+}
