@@ -142,7 +142,7 @@ async function ensurePortalUser(strapi) {
 
   const email = process.env.PORTAL_USER_EMAIL || "clientadmin@local.test";
   const username = process.env.PORTAL_USER_NAME || "clientadmin";
-  const password = process.env.PORTAL_USER_PASSWORD || "Client@1234";
+  const password = process.env.PORTAL_USER_PASSWORD;
 
   const existingUser = await userQuery.findOne({
     where: {
@@ -151,6 +151,11 @@ async function ensurePortalUser(strapi) {
   });
 
   if (existingUser) return existingUser;
+
+  if (!password) {
+    strapi.log.warn("PORTAL_USER_PASSWORD not set — skipping portal user creation.");
+    return null;
+  }
 
   const userService = strapi.plugin("users-permissions").service("user");
   const created = await userService.add({

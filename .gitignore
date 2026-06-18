@@ -5,7 +5,12 @@ node_modules/
 .env
 .env.local
 .env.*.local
+.env.production
+backend/.env.production
+frontend/.env.production
 !.env.example
+!backend/.env.production.example
+!frontend/.env.production.example
 
 # Build output
 dist/

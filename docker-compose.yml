@@ -1,0 +1,47 @@
+services:
+
+  # ── Strapi Backend ───────────────────────────────────────────────────────────
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: pngum-backend
+    restart: unless-stopped
+    env_file: ./backend/.env.production
+    environment:
+      NODE_ENV: production
+      DATABASE_FILENAME: /data/data.db
+    volumes:
+      - strapi_data:/data
+      - strapi_uploads:/app/public/uploads
+    expose:
+      - "1337"
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:1337/_health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 90s
+
+  # ── React Frontend (nginx) ───────────────────────────────────────────────────
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      args:
+        # Read from .env in project root at build time
+        VITE_STRAPI_API_URL: ${VITE_STRAPI_API_URL:-http://localhost/api}
+    container_name: pngum-frontend
+    restart: unless-stopped
+    ports:
+      - "80:80"
+    depends_on:
+      backend:
+        condition: service_healthy
+
+# ── Persistent volumes ────────────────────────────────────────────────────────
+volumes:
+  strapi_data:
+    name: pngum_strapi_data
+  strapi_uploads:
+    name: pngum_strapi_uploads

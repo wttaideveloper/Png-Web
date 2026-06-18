@@ -468,6 +468,7 @@ export interface ApiHomePageHomePage extends Struct.SingleTypeSchema {
     railSettings: Schema.Attribute.Component<'page.rail-settings', false>;
     sections: Schema.Attribute.Component<'page.home-section', true>;
     seoSettings: Schema.Attribute.Component<'shared.seo-settings', false>;
+    sitePages: Schema.Attribute.Component<'page.site-page', true>;
     updatedAt: Schema.Attribute.DateTime;
     updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
       Schema.Attribute.Private;

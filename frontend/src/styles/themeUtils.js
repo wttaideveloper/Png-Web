@@ -89,11 +89,12 @@ export const applyThemeToDocument = (theme, railSettings) => {
   root.style.setProperty("--seventh-rail-width", rail.width || merged.seventhRailWidth);
 };
 
+const MEDIA_HOST = (import.meta.env.VITE_STRAPI_API_URL || "http://localhost:1337/api").replace(/\/api\/?$/, "");
+
 export const getImageUrl = (image) => {
   if (typeof image === "string") {
     if (image.startsWith("http")) return image;
-    const mediaHost = (import.meta.env.VITE_STRAPI_API_URL || "http://localhost:1337/api").replace("/api", "");
-    return `${mediaHost}${image}`;
+    return `${MEDIA_HOST}${image}`;
   }
 
   const source =
@@ -106,8 +107,7 @@ export const getImageUrl = (image) => {
 
   if (source.startsWith("http")) return source;
 
-  const mediaHost = (import.meta.env.VITE_STRAPI_API_URL || "http://localhost:1337/api").replace("/api", "");
-  return `${mediaHost}${source}`;
+  return `${MEDIA_HOST}${source}`;
 };
 
 export const extractMediaRef = (media) => {

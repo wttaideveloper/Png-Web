@@ -113,6 +113,27 @@ export interface PageRailSettings extends Struct.ComponentSchema {
   };
 }
 
+export interface PageSitePage extends Struct.ComponentSchema {
+  collectionName: 'components_page_site_pages';
+  info: {
+    description: 'Custom site page with editable content';
+    displayName: 'Site Page';
+  };
+  attributes: {
+    body: Schema.Attribute.Text;
+    eyebrow: Schema.Attribute.String;
+    heroImage: Schema.Attribute.Media<'images'>;
+    link: Schema.Attribute.String;
+    pageType: Schema.Attribute.Enumeration<['content', 'link']> &
+      Schema.Attribute.DefaultTo<'content'>;
+    showInFooter: Schema.Attribute.Boolean & Schema.Attribute.DefaultTo<false>;
+    showInHeader: Schema.Attribute.Boolean & Schema.Attribute.DefaultTo<true>;
+    slug: Schema.Attribute.String;
+    title: Schema.Attribute.String;
+    visible: Schema.Attribute.Boolean & Schema.Attribute.DefaultTo<true>;
+  };
+}
+
 export interface SharedButtonSettings extends Struct.ComponentSchema {
   collectionName: 'components_shared_button_settings';
   info: {
@@ -328,6 +349,7 @@ declare module '@strapi/strapi' {
       'page.header-settings': PageHeaderSettings;
       'page.home-section': PageHomeSection;
       'page.rail-settings': PageRailSettings;
+      'page.site-page': PageSitePage;
       'shared.button-settings': SharedButtonSettings;
       'shared.color-settings': SharedColorSettings;
       'shared.donation-amount': SharedDonationAmount;
