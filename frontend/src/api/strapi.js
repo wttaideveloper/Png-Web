@@ -14,7 +14,16 @@ function buildPopulateQuery({ includeSitePages = false } = {}) {
   params.set("populate[railSettings]", "true");
   params.set("populate[headerSettings][populate]", "*");
   params.set("populate[footerSettings][populate]", "*");
-  params.set("populate[sections][populate]", "*");
+  params.set("populate[sections][populate][imageSettings][populate]", "image");
+  params.set("populate[sections][populate][ministryItems][populate]", "image");
+  params.set("populate[sections][populate][newsItems][populate]", "image");
+  params.set("populate[sections][populate][videoItems][populate][thumbnail]", "true");
+  params.set("populate[sections][populate][videoItems][populate][video]", "true");
+  params.set("populate[sections][populate][colorSettings]", "true");
+  params.set("populate[sections][populate][buttonSettings]", "true");
+  params.set("populate[sections][populate][secondaryButtonSettings]", "true");
+  params.set("populate[sections][populate][statItems]", "true");
+  params.set("populate[sections][populate][donationItems]", "true");
   params.set("populate[seoSettings][populate]", "*");
   if (includeSitePages) {
     params.set("populate[sitePages][populate]", "*");

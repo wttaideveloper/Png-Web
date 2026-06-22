@@ -150,6 +150,14 @@ function mediaId(ref) {
   return ref?.id || undefined;
 }
 
+function serializeImageSettings(existingSettings, imageRef) {
+  const hasImage = Boolean(mediaId(imageRef) || imageRef?.url);
+  return {
+    altText: existingSettings?.altText || "",
+    image: hasImage ? mediaId(imageRef) ?? null : null,
+  };
+}
+
 function mergeButtonSettings(existing, { text, link }, defaults = {}) {
   return {
     ...(existing || {}),
@@ -382,6 +390,7 @@ export function buildFormFromData(data) {
   const support = getSection(enriched?.sections, "contact");
   const [heroLine1, heroLine2] = splitHeroTitle(hero?.title);
   const heroImageRef = extractMediaRef(hero?.imageSettings?.image);
+  const missionImageRef = extractMediaRef(about?.imageSettings?.image);
   const supportImageRef = extractMediaRef(support?.imageSettings?.image);
   const headerMenu = enriched?.headerSettings?.menuItems?.length
     ? enriched.headerSettings.menuItems
@@ -432,7 +441,12 @@ export function buildFormFromData(data) {
     missionEyebrow: about?.subtitle || sampleHomePage.mission.eyebrow,
     missionTitle: about?.title || sampleHomePage.mission.title,
     missionDescription: about?.description || sampleHomePage.mission.description,
-    missionImage: extractMediaRef(about?.imageSettings?.image),
+    missionImage: {
+      id: missionImageRef.id,
+      url: missionImageRef.url || about?.items?.missionImageUrl || "",
+    },
+    missionBgColor: about?.colorSettings?.backgroundColor || "#072b52",
+    missionTextColor: about?.colorSettings?.textColor || "#ffffff",
     missionStats: (about?.statItems?.length ? about.statItems : sampleHomePage.mission.stats).map((item) => ({
       value: item.value || "",
       label: item.label || "",
@@ -514,7 +528,11 @@ export function buildPayloadFromForm(form, existingData) {
   const storedSitePages = serializeSitePagesForStorage(navigationPages);
   const strapiSitePages = serializeSitePagesForStrapiComponent(navigationPages);
   const existingHero = getSection(existingData?.sections, "hero");
+  const existingHeroItems =
+    existingHero?.items && typeof existingHero.items === "object" ? existingHero.items : {};
   const existingAbout = getSection(existingData?.sections, "about");
+  const existingAboutItems =
+    existingAbout?.items && typeof existingAbout.items === "object" ? existingAbout.items : {};
   const existingServices = getSection(existingData?.sections, "services");
 
   const headerMenuFromPages = navigationPages
@@ -564,11 +582,11 @@ export function buildPayloadFromForm(form, existingData) {
     title: joinHeroTitle(form.heroLine1, form.heroLine2),
     subtitle: form.heroSubtitle,
     description: form.heroDescription,
-    imageSettings: {
-      ...(existingHero?.imageSettings || {}),
-      image: mediaId(form.heroImage),
+    imageSettings: serializeImageSettings(existingHero?.imageSettings, form.heroImage),
+    items: {
+      ...existingHeroItems,
+      heroImageUrl: form.heroImage?.url || "",
     },
-    items: { heroImageUrl: form.heroImage?.url || "" },
     buttonSettings: mergeButtonSettings(existingHero?.buttonSettings, {
       text: form.heroPrimaryBtnText,
       link: form.heroPrimaryBtnLink,
@@ -584,9 +602,15 @@ export function buildPayloadFromForm(form, existingData) {
     subtitle: form.missionEyebrow,
     title: form.missionTitle,
     description: form.missionDescription,
-    imageSettings: {
-      ...(existingAbout?.imageSettings || {}),
-      image: mediaId(form.missionImage),
+    imageSettings: serializeImageSettings(existingAbout?.imageSettings, form.missionImage),
+    colorSettings: {
+      ...(existingAbout?.colorSettings || {}),
+      backgroundColor: form.missionBgColor,
+      textColor: form.missionTextColor,
+    },
+    items: {
+      ...existingAboutItems,
+      missionImageUrl: form.missionImage?.url || "",
     },
     statItems: form.missionStats.filter((item) => item.value && item.label),
   });
@@ -655,10 +679,7 @@ export function buildPayloadFromForm(form, existingData) {
     subtitle: form.supportEyebrow,
     title: form.supportTitle,
     description: form.supportDescription,
-    imageSettings: {
-      ...(existingContact?.imageSettings || {}),
-      image: mediaId(form.supportImage),
-    },
+    imageSettings: serializeImageSettings(existingContact?.imageSettings, form.supportImage),
     items: {
       ...existingContactItems,
       backgroundImageUrl: form.supportImage?.url || "",

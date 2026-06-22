@@ -62,6 +62,6 @@ export const quickActions = [
 ];
 
 export const DEMO_CREDENTIALS = {
-  identifier: "",
-  password: "",
+  identifier: "clientadmin",
+  password: "ClientAdmin123!",
 };

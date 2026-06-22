@@ -66,6 +66,24 @@ export const parseSectionStyle = (section) => {
   };
 };
 
+export const hexToRgba = (hex, alpha = 1) => {
+  if (!hex || typeof hex !== "string" || !hex.startsWith("#")) return hex;
+  const normalized = hex.replace("#", "");
+  const expanded =
+    normalized.length === 3
+      ? normalized
+          .split("")
+          .map((char) => char + char)
+          .join("")
+      : normalized;
+  if (expanded.length !== 6) return hex;
+  const red = Number.parseInt(expanded.slice(0, 2), 16);
+  const green = Number.parseInt(expanded.slice(2, 4), 16);
+  const blue = Number.parseInt(expanded.slice(4, 6), 16);
+  if ([red, green, blue].some((value) => Number.isNaN(value))) return hex;
+  return `rgba(${red}, ${green}, ${blue}, ${alpha})`;
+};
+
 export const applyThemeToDocument = (theme, railSettings) => {
   const merged = { ...fallbackTheme, ...(theme || {}) };
   const rail = railSettings || {};

@@ -1,11 +1,5 @@
 import { sampleHomePage } from "../../mock/sampleHomePage";
-import {
-  getImageUrl,
-  mergeItems,
-  parseButtonStyle,
-  parseSectionStyle,
-  parseTypography,
-} from "../../styles/themeUtils";
+import { getImageUrl, hexToRgba, mergeItems, parseButtonStyle, parseSectionStyle, parseTypography } from "../../styles/themeUtils";
 
 function byName(sections, sectionName) {
   return (sections || []).find((item) => item.sectionName === sectionName && item.isActive !== false);
@@ -181,8 +175,9 @@ export default function PngumHomePage({ sections = [] }) {
 
   const [heroTop, heroBottom] = titlePair(hero, sampleHomePage.hero.headingTop, sampleHomePage.hero.headingBottom);
   const heroImage = resolveMediaUrl(hero?.imageSettings?.image, hero?.items?.heroImageUrl);
+  const heroBaseStyle = parseSectionStyle(hero);
   const heroStyle = {
-    ...parseSectionStyle(hero),
+    ...(heroImage ? { color: heroBaseStyle.color } : heroBaseStyle),
     ...(heroImage
       ? {
           backgroundImage: `linear-gradient(105deg, rgba(3,38,76,0.94) 0%, rgba(7,45,81,0.88) 36%, rgba(37,77,112,0.46) 100%), url(${heroImage})`,
@@ -193,11 +188,13 @@ export default function PngumHomePage({ sections = [] }) {
   };
 
   const missionImage = resolveMediaUrl(about?.imageSettings?.image, about?.items?.missionImageUrl);
+  const missionBaseStyle = parseSectionStyle(about);
+  const missionBg = missionBaseStyle.backgroundColor || "#072b52";
   const missionStyle = {
-    ...parseSectionStyle(about),
+    ...(missionImage ? { color: missionBaseStyle.color } : missionBaseStyle),
     ...(missionImage
       ? {
-          backgroundImage: `linear-gradient(180deg, rgba(239,239,234,0.92), rgba(239,239,234,0.96)), url(${missionImage})`,
+          backgroundImage: `linear-gradient(180deg, ${hexToRgba(missionBg, 0.92)}, ${hexToRgba(missionBg, 0.96)}), url(${missionImage})`,
           backgroundSize: "cover",
           backgroundPosition: "center",
         }

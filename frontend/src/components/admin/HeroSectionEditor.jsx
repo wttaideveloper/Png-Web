@@ -48,9 +48,9 @@ export default function HeroSectionEditor({ form, updateField, apiToken }) {
             <EditorBlock icon={Type} title="Intro paragraph" description="Supporting text under the headline.">
               <TextArea label="Description" value={form.heroDescription} onChange={(v) => updateField("heroDescription", v)} placeholder="Proclaiming the everlasting gospel..." />
             </EditorBlock>
-            <EditorBlock icon={ImageIcon} title="Background image" description="Wide banner photo behind the hero gradient.">
+            <EditorBlock icon={ImageIcon} title="Background image" description="Upload or paste a URL for the hero banner background.">
               <MediaUploadField
-                label="Hero background"
+                label="Hero background image"
                 apiToken={apiToken}
                 value={form.heroImage}
                 onChange={(v) => updateField("heroImage", v)}
