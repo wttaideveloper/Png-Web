@@ -3,6 +3,17 @@ import { enrichHomePageData, getStoredSitePagesRaw } from "../utils/pageUtils.js
 export const STRAPI_API_URL = import.meta.env.VITE_STRAPI_API_URL || "http://localhost:1337/api";
 export const STRAPI_BASE_URL = STRAPI_API_URL.replace(/\/api\/?$/, "");
 
+const REQUEST_TIMEOUT_MS = 15000;
+
+const ROOT_META_KEYS = new Set([
+  "documentId",
+  "createdAt",
+  "updatedAt",
+  "publishedAt",
+  "locale",
+  "localizations",
+]);
+
 function hasStoredSitePages(data) {
   if (!data) return false;
   return getStoredSitePagesRaw(data).length > 0;
@@ -38,7 +49,6 @@ const fallbackQueries = [
   "populate=*",
   "",
 ];
-const REQUEST_TIMEOUT_MS = 15000;
 
 function isNetworkError(error) {
   return (
@@ -49,7 +59,7 @@ function isNetworkError(error) {
 
 function buildConnectionError() {
   return new Error(
-    `Cannot connect to the CMS at ${STRAPI_BASE_URL}. Start the backend with "npm run develop" in the backend folder, then retry.`
+    `Cannot connect to the CMS at ${STRAPI_BASE_URL}. Start the backend with "npm run develop" in the backend folder, then retry.`,
   );
 }
 
@@ -62,7 +72,7 @@ async function requestWithTimeout(url, options = {}) {
   } catch (error) {
     if (error?.name === "AbortError") {
       throw new Error(
-        `Timed out connecting to the CMS at ${STRAPI_BASE_URL}. Check that Strapi is running, then retry.`
+        `Timed out connecting to the CMS at ${STRAPI_BASE_URL}. Check that Strapi is running, then retry.`,
       );
     }
     if (isNetworkError(error)) {
@@ -74,9 +84,20 @@ async function requestWithTimeout(url, options = {}) {
   }
 }
 
-async function requestHomePage(query) {
-  const suffix = query ? `?${query}` : "";
-  return requestWithTimeout(`${STRAPI_API_URL}/home-page${suffix}`);
+function withStatus(query, status) {
+  const params = new URLSearchParams(query || "");
+  if (status) params.set("status", status);
+  const built = params.toString();
+  return built ? `?${built}` : "";
+}
+
+async function requestHomePage(query, { apiToken, status } = {}) {
+  const suffix = withStatus(query, status);
+  const headers = {};
+  if (apiToken) {
+    headers.Authorization = `Bearer ${apiToken}`;
+  }
+  return requestWithTimeout(`${STRAPI_API_URL}/home-page${suffix}`, { headers });
 }
 
 async function parseErrorMessage(response) {
@@ -99,46 +120,77 @@ function omitPayloadKey(data, key) {
   return next;
 }
 
-export async function fetchHomePage() {
+function pickBestHomePageResult(candidates = []) {
+  let bestResult = null;
+
+  for (const enriched of candidates) {
+    if (!enriched) continue;
+    const hasSitePages = hasStoredSitePages(enriched);
+    const hasFooterLinks =
+      Array.isArray(enriched?.footerSettings?.footerLinks) && enriched.footerSettings.footerLinks.length > 0;
+    const hasSections = Array.isArray(enriched?.sections) && enriched.sections.length > 0;
+
+    if (hasSitePages) return enriched;
+    if (hasFooterLinks || hasSections || !bestResult) {
+      bestResult = enriched;
+    }
+    if (hasFooterLinks || hasSections) {
+      return enriched;
+    }
+  }
+
+  return bestResult;
+}
+
+async function loadHomePageAttempts({ apiToken, status } = {}) {
   const attempts = [
     buildPopulateQuery({ includeSitePages: true }),
     ...fallbackQueries,
   ];
   let lastStatus = 0;
-  let bestResult = null;
+  const candidates = [];
 
   for (const query of attempts) {
-    const response = await requestHomePage(query);
+    const response = await requestHomePage(query, { apiToken, status });
     lastStatus = response.status;
 
     if (response.status === 404) {
-      return null;
+      return { data: null, lastStatus };
     }
 
     if (response.ok) {
       const payload = await response.json();
       const data = payload?.data || null;
       if (!data) continue;
-
-      const enriched = enrichHomePageData(data);
-      const hasSitePages = hasStoredSitePages(enriched);
-      const hasFooterLinks =
-        Array.isArray(enriched?.footerSettings?.footerLinks) && enriched.footerSettings.footerLinks.length > 0;
-      const hasSections = Array.isArray(enriched?.sections) && enriched.sections.length > 0;
-
-      if (hasSitePages) return enriched;
-      if (hasFooterLinks || hasSections || !bestResult) {
-        bestResult = enriched;
-      }
-      if (hasFooterLinks || hasSections) {
-        return enriched;
-      }
+      candidates.push(enrichHomePageData(data));
     }
   }
 
-  if (bestResult) return enrichHomePageData(bestResult);
+  return { data: pickBestHomePageResult(candidates), lastStatus };
+}
 
-  throw new Error(`Failed to fetch homepage data (${lastStatus})`);
+/** Public website — always prefer the published Strapi record. */
+export async function fetchHomePage() {
+  const published = await loadHomePageAttempts({ status: "published" });
+  if (published.data) return published.data;
+
+  const fallback = await loadHomePageAttempts();
+  if (fallback.data) return fallback.data;
+
+  throw new Error(`Failed to fetch homepage data (${published.lastStatus || fallback.lastStatus})`);
+}
+
+/** Admin reload — read draft first (latest edits), then published. */
+export async function fetchAdminHomePage(apiToken) {
+  if (!apiToken) return fetchHomePage();
+
+  const draft = await loadHomePageAttempts({ apiToken, status: "draft" });
+  if (draft.data) return draft.data;
+
+  const published = await loadHomePageAttempts({ apiToken, status: "published" });
+  if (published.data) return published.data;
+
+  return fetchHomePage();
 }
 
 async function putHomePage(homePageData, apiToken, url) {
@@ -159,7 +211,7 @@ async function saveHomePageWithMode(homePageData, apiToken, mode = "publish") {
 
   const draftUrl = `${STRAPI_API_URL}/home-page`;
   const publishUrl = `${STRAPI_API_URL}/home-page?status=published`;
-  const urls = mode === "publish" ? [publishUrl, draftUrl] : [draftUrl];
+  const urls = mode === "publish" ? [publishUrl, draftUrl] : [draftUrl, publishUrl];
 
   let payloadData = homePageData;
   let lastError = "";
@@ -199,8 +251,14 @@ export async function publishHomePage(homePageData, apiToken) {
   return saveHomePageWithMode(homePageData, apiToken, "publish");
 }
 
-export async function updateHomePage(homePageData, apiToken) {
+/** Save draft then publish so the live website always receives the update. */
+export async function saveAndPublishHomePage(homePageData, apiToken) {
+  await saveHomePageDraft(homePageData, apiToken);
   return publishHomePage(homePageData, apiToken);
+}
+
+export async function updateHomePage(homePageData, apiToken) {
+  return saveAndPublishHomePage(homePageData, apiToken);
 }
 
 export async function loginAdmin(identifier, password) {
@@ -260,3 +318,5 @@ export async function fetchCurrentUser(token) {
 
   return response.json();
 }
+
+export { ROOT_META_KEYS };

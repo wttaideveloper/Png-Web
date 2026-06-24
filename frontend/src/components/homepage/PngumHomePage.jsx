@@ -1,4 +1,5 @@
 import { sampleHomePage } from "../../mock/sampleHomePage";
+import HeroSlider from "./HeroSlider";
 import { getImageUrl, hexToRgba, mergeItems, parseButtonStyle, parseSectionStyle, parseTypography } from "../../styles/themeUtils";
 
 function byName(sections, sectionName) {
@@ -174,18 +175,7 @@ export default function PngumHomePage({ sections = [] }) {
   const supportSection = byName(sections, "contact");
 
   const [heroTop, heroBottom] = titlePair(hero, sampleHomePage.hero.headingTop, sampleHomePage.hero.headingBottom);
-  const heroImage = resolveMediaUrl(hero?.imageSettings?.image, hero?.items?.heroImageUrl);
-  const heroBaseStyle = parseSectionStyle(hero);
-  const heroStyle = {
-    ...(heroImage ? { color: heroBaseStyle.color } : heroBaseStyle),
-    ...(heroImage
-      ? {
-          backgroundImage: `linear-gradient(105deg, rgba(3,38,76,0.94) 0%, rgba(7,45,81,0.88) 36%, rgba(37,77,112,0.46) 100%), url(${heroImage})`,
-          backgroundSize: "cover",
-          backgroundPosition: "center",
-        }
-      : {}),
-  };
+  const heroStyle = parseSectionStyle(hero);
 
   const missionImage = resolveMediaUrl(about?.imageSettings?.image, about?.items?.missionImageUrl);
   const missionBaseStyle = parseSectionStyle(about);
@@ -203,7 +193,7 @@ export default function PngumHomePage({ sections = [] }) {
 
   const missionStats = mergeItems(about?.statItems, about?.items, sampleHomePage.mission.stats);
   const ministryItems = normalizeMinistryItems(ministriesSection);
-  const resolvedMinistryItems = ministryItems.length ? ministryItems : sampleHomePage.ministries.items;
+  const resolvedMinistryItems = ministryItems.length ? ministryItems.slice(0, 6) : sampleHomePage.ministries.items;
   const updatesItems = normalizeNewsItems(updatesSection);
   const resolvedNewsItems = updatesItems.length ? updatesItems : sampleHomePage.updates.news;
   const videoItems = normalizeVideoItems(updatesSection);
@@ -231,8 +221,7 @@ export default function PngumHomePage({ sections = [] }) {
 
   return (
     <>
-      <section className="pngum-hero" style={heroStyle}>
-        <div className="container">
+      <HeroSlider hero={hero} heroStyle={heroStyle}>
           <p className="eyebrow" style={parseTypography(hero?.subtitleTypography)}>
             {hero?.subtitle || sampleHomePage.hero.eyebrow}
           </p>
@@ -244,15 +233,14 @@ export default function PngumHomePage({ sections = [] }) {
             {hero?.description || sampleHomePage.hero.description}
           </p>
           <div className="hero-actions">
-            <a className="btn btn-orange" href={heroPrimaryBtn.link || "#ministries"} style={parseButtonStyle(heroPrimaryBtn)}>
+            <a className="btn btn-orange" href={heroPrimaryBtn.link || sampleHomePage.hero.primaryCta.link} style={parseButtonStyle(heroPrimaryBtn)}>
               {heroPrimaryBtn.text || sampleHomePage.hero.primaryCta.text}
             </a>
-            <a className="btn btn-outline" href={heroSecondaryBtn.link || "#updates"} style={parseButtonStyle(heroSecondaryBtn)}>
+            <a className="btn btn-outline" href={heroSecondaryBtn.link || sampleHomePage.hero.secondaryCta.link} style={parseButtonStyle(heroSecondaryBtn)}>
               {heroSecondaryBtn.text || sampleHomePage.hero.secondaryCta.text}
             </a>
           </div>
-        </div>
-      </section>
+      </HeroSlider>
 
       <section className="pngum-mission" style={missionStyle}>
         <div className="container">

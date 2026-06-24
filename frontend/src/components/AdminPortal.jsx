@@ -1,8 +1,10 @@
 import { useEffect, useState } from "react";
 import { AnimatePresence } from "framer-motion";
 import { LogOut, Menu, Moon, RefreshCw, Save, Sun } from "lucide-react";
-import { fetchCurrentUser, fetchHomePage, loginAdmin, publishHomePage, saveHomePageDraft } from "../api/strapi";
+import { fetchAdminHomePage, fetchCurrentUser, fetchHomePage, loginAdmin, publishHomePage, saveAndPublishHomePage, saveHomePageDraft } from "../api/strapi";
 import { buildFormFromData, buildPayloadFromForm, applyNavigationPagesToData, enrichHomePageData } from "./admin/adminFormState";
+import { createPageId } from "../utils/menuUtils";
+import { sectionsFromTemplate } from "../utils/pageSections";
 import AdminLogin from "./admin/AdminLogin";
 import AdminSidebar from "./admin/AdminSidebar";
 import AdminOverview from "./admin/AdminOverview";
@@ -21,6 +23,16 @@ import { findPanel } from "./admin/panelConfig";
 import { slugify } from "../utils/pageUtils";
 import { emptyMediaRef } from "../styles/themeUtils";
 
+const ADMIN_PANEL_KEY = "portal_active_panel";
+
+function readStoredPanel() {
+  try {
+    const stored = sessionStorage.getItem(ADMIN_PANEL_KEY);
+    return stored && findPanel(stored).id === stored ? stored : "overview";
+  } catch {
+    return "overview";
+  }
+}
 const panels = [
   { id: "overview", label: "Dashboard", section: "Overview" },
   { id: "theme", label: "Theme & Branding", section: "Global" },
@@ -49,7 +61,7 @@ export default function AdminPortal({ data, onSaved }) {
   const [reloading, setReloading] = useState(false);
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
-  const [activePanel, setActivePanel] = useState("overview");
+  const [activePanel, setActivePanel] = useState(readStoredPanel);
   const [lastSavedAt, setLastSavedAt] = useState("");
   const [hasChanges, setHasChanges] = useState(false);
   const [form, setForm] = useState(() => buildFormFromData(data));
@@ -61,6 +73,11 @@ export default function AdminPortal({ data, onSaved }) {
 
   function openPanel(panelId) {
     setActivePanel(panelId);
+    try {
+      sessionStorage.setItem(ADMIN_PANEL_KEY, panelId);
+    } catch {
+      // ignore storage errors
+    }
     setMobileNavOpen(false);
     setNavSearch("");
   }
@@ -163,21 +180,34 @@ export default function AdminPortal({ data, onSaved }) {
     }
   }
 
+  function notifySiteUpdated() {
+    window.dispatchEvent(new CustomEvent("pngum-cms-updated"));
+  }
+
+  async function persistHomepage({ publish = true } = {}) {
+    const payload = buildCurrentPayload();
+    const savedNavigationPages = form.navigationPages || [];
+    const saved = publish
+      ? await saveAndPublishHomePage(payload, apiToken)
+      : await saveHomePageDraft(payload, apiToken);
+    let fresh = enrichHomePageData(saved || (await fetchAdminHomePage(apiToken)));
+    fresh = applyNavigationPagesToData(fresh, savedNavigationPages);
+    onSaved(fresh);
+    setForm(buildFormFromData(fresh));
+    setLastSavedAt(new Date().toLocaleTimeString());
+    setHasChanges(false);
+    notifySiteUpdated();
+    return fresh;
+  }
+
   async function onSaveDraft() {
     setSaving(true);
     setMessage("");
     setError("");
     try {
-      const payload = buildCurrentPayload();
-      const savedNavigationPages = form.navigationPages || [];
-      const saved = await saveHomePageDraft(payload, apiToken);
-      let fresh = applyNavigationPagesToData(saved || (await fetchHomePage()), savedNavigationPages);
-      onSaved(fresh);
-      setForm(buildFormFromData(fresh));
-      setMessage("Draft saved successfully.");
-      setLastSavedAt(new Date().toLocaleTimeString());
-      setHasChanges(false);
-      showToast("Draft saved. Click Publish Live when ready.");
+      await persistHomepage({ publish: true });
+      setMessage("Changes saved and published to the live website.");
+      showToast("Saved to Strapi and published. Open the homepage to see updates.");
     } catch (err) {
       const text = err.message || "Save failed";
       setError(text);
@@ -189,7 +219,7 @@ export default function AdminPortal({ data, onSaved }) {
 
   async function onPublishLive() {
     const confirmed = window.confirm(
-      "Publish these changes to the live site now?\n\nTip: Use Save Draft if you want to review first.",
+      "Publish these changes to the live site now?\n\nAll homepage sections, hero slider, pages, and menu will update on the public website.",
     );
     if (!confirmed) return;
 
@@ -198,16 +228,8 @@ export default function AdminPortal({ data, onSaved }) {
     setError("");
     try {
       persistLastLiveBackup(buildBackupPayloadFromCurrentLive());
-      const payload = buildCurrentPayload();
-      const savedNavigationPages = form.navigationPages || [];
-      const saved = await publishHomePage(payload, apiToken);
-      const fresh = applyNavigationPagesToData(saved || (await fetchHomePage()), savedNavigationPages);
-      onSaved(fresh);
-      setForm(buildFormFromData(fresh));
-      setLastSavedAt(new Date().toLocaleTimeString());
-      setHasChanges(false);
-      setMessage("Published to live successfully.");
-      showToast("Homepage published to live.");
+      await persistHomepage({ publish: true });
+      showToast("Homepage published to the live website.");
     } catch (err) {
       const text = err.message || "Publish failed";
       setError(text);
@@ -256,7 +278,7 @@ export default function AdminPortal({ data, onSaved }) {
     }
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [saving, publishing, apiToken, user, form, data]);
+  }, [saving, publishing, apiToken, user]);
 
   function updateField(key, value) {
     setHasChanges(true);
@@ -305,12 +327,19 @@ export default function AdminPortal({ data, onSaved }) {
     updateListField("navigationPages", next);
   }
 
-  function addNavPage() {
-    const title = "New Page";
+  function replaceNavPages(nextPages) {
+    updateListField("navigationPages", nextPages);
+  }
+
+  function addNavPage(templateId = "starter", title = "New Page") {
     const slug = slugify(`${title}-${Date.now().toString(36).slice(-4)}`);
+    const pageId = createPageId();
     const next = [
       ...(form.navigationPages || []),
       {
+        pageId,
+        parentId: null,
+        menuOrder: (form.navigationPages || []).length,
         title,
         slug,
         link: `/${slug}`,
@@ -328,9 +357,11 @@ export default function AdminPortal({ data, onSaved }) {
         pageButtonLink: "",
         bannerImage: emptyMediaRef(),
         sideImage: emptyMediaRef(),
+        sections: sectionsFromTemplate(templateId),
       },
     ];
     updateListField("navigationPages", next);
+    return { index: next.length - 1, pageId };
   }
 
   function removeNavPage(index) {
@@ -352,13 +383,13 @@ export default function AdminPortal({ data, onSaved }) {
     setMessage("");
     setError("");
     try {
-      const fresh = enrichHomePageData(await fetchHomePage());
+      const fresh = enrichHomePageData(await fetchAdminHomePage(apiToken));
       const hasStoredPages = Array.isArray(fresh?.sitePages) && fresh.sitePages.length > 0;
       const merged = hasStoredPages ? fresh : applyNavigationPagesToData(fresh, form.navigationPages);
       onSaved(merged);
       setForm(buildFormFromData(merged));
       setHasChanges(false);
-      showToast("Reloaded latest content from the CMS.");
+      showToast("Reloaded latest content from Strapi.");
     } catch (err) {
       const text = err.message || "Reload failed";
       setError(text);
@@ -446,7 +477,7 @@ export default function AdminPortal({ data, onSaved }) {
               </button>
               <button className="admin-ghost-btn" disabled={saving || publishing || restoring} onClick={onSaveDraft} type="button">
                 <Save size={16} />
-                {saving ? "Saving..." : "Save Draft"}
+                {saving ? "Saving..." : "Save to Website"}
               </button>
               <button className="admin-primary-btn" disabled={saving || publishing || restoring} onClick={onPublishLive} type="button">
                 <Save size={16} />
@@ -490,12 +521,15 @@ export default function AdminPortal({ data, onSaved }) {
               onAdd={addNavPage}
               onUpdate={updateNavPage}
               onRemove={removeNavPage}
-              onMove={moveNavPage}
+              onReplacePages={replaceNavPages}
+              onSaveDraft={onSaveDraft}
+              hasChanges={hasChanges}
+              saving={saving}
               apiToken={apiToken}
             />
           )}
           {activePanel === "hero" && (
-            <HeroSectionEditor form={form} updateField={updateField} apiToken={apiToken} />
+            <HeroSectionEditor form={form} updateField={updateField} updateListField={updateListField} apiToken={apiToken} />
           )}
           {activePanel === "mission" && (
             <MissionSectionEditor form={form} updateField={updateField} updateListField={updateListField} apiToken={apiToken} />
@@ -526,7 +560,7 @@ export default function AdminPortal({ data, onSaved }) {
                   </button>
                   <button type="button" className="admin-primary-btn" onClick={onSaveDraft} disabled={saving || publishing || restoring}>
                     <Save size={16} />
-                    {saving ? "Saving..." : "Save Draft"}
+                    {saving ? "Saving..." : "Save to Website"}
                   </button>
                   <button type="button" className="admin-ghost-btn" onClick={onPublishLive} disabled={saving || publishing || restoring}>
                     Publish Live

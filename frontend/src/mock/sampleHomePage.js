@@ -43,9 +43,9 @@ export const sampleHomePage = {
       { tag: "Youth", date: "Apr 30, 2026", title: "National Pathfinder Camporee Draws Record 8,000 Campers" },
     ],
     videos: [
-      { title: "What Do Adventists Believe?", meta: "Hope Channel PNG · 18.4K views" },
-      { title: "The Remnant and Its Mission", meta: "9.2K views · 1 month ago" },
-      { title: "Adventist Church in Solidarity", meta: "12.1K views · 2 months ago" },
+      { title: "What Do Adventists Believe?", meta: "Hope Channel PNG ï¿½ 18.4K views" },
+      { title: "The Remnant and Its Mission", meta: "9.2K views ï¿½ 1 month ago" },
+      { title: "Adventist Church in Solidarity", meta: "12.1K views ï¿½ 2 months ago" },
     ],
   },
   support: {

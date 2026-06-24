@@ -1,5 +1,7 @@
 import { sampleHomePage } from "../../mock/sampleHomePage";
 import { slugify, enrichHomePageData, getStoredSitePagesRaw } from "../../utils/pageUtils";
+import { buildMenuTree, createPageId, ensurePageIds, menuNodesToHeaderItems } from "../../utils/menuUtils";
+import { ensurePageSections, serializePageSections } from "../../utils/pageSections";
 import { emptyMediaRef, extractMediaRef } from "../../styles/themeUtils";
 
 export { enrichHomePageData } from "../../utils/pageUtils";
@@ -150,6 +152,27 @@ function mediaId(ref) {
   return ref?.id || undefined;
 }
 
+function normalizeStoredUrl(url = "") {
+  if (!url || typeof url !== "string") return "";
+  if (url.startsWith("http://") || url.startsWith("https://")) {
+    try {
+      const parsed = new URL(url);
+      return `${parsed.pathname}${parsed.search}`;
+    } catch {
+      return url;
+    }
+  }
+  return url;
+}
+
+function normalizeMediaRefForStorage(ref) {
+  if (!ref) return emptyMediaRef();
+  return {
+    id: ref.id || null,
+    url: normalizeStoredUrl(ref.url || ""),
+  };
+}
+
 function serializeImageSettings(existingSettings, imageRef) {
   const hasImage = Boolean(mediaId(imageRef) || imageRef?.url);
   return {
@@ -158,9 +181,34 @@ function serializeImageSettings(existingSettings, imageRef) {
   };
 }
 
+function loadHeroSlides(hero, heroImageRef) {
+  let items = hero?.items;
+  if (typeof items === "string") {
+    try {
+      items = JSON.parse(items);
+    } catch {
+      items = {};
+    }
+  }
+  const raw = Array.isArray(items?.heroSlides) ? items.heroSlides : [];
+  if (raw.length) {
+    return raw.map((slide) => ({
+      imageMedia: {
+        id: slide.imageId || null,
+        url: slide.imageUrl || slide.image || "",
+      },
+      durationSeconds: Number(slide.durationSeconds) > 0 ? Number(slide.durationSeconds) : 5,
+    }));
+  }
+  if (heroImageRef?.url || heroImageRef?.id) {
+    return [{ imageMedia: heroImageRef, durationSeconds: 5 }];
+  }
+  return [];
+}
+
+
 function mergeButtonSettings(existing, { text, link }, defaults = {}) {
   return {
-    ...(existing || {}),
     text: text ?? existing?.text ?? defaults.text ?? "",
     link: link ?? existing?.link ?? defaults.link ?? "#",
     backgroundColor: existing?.backgroundColor ?? defaults.backgroundColor,
@@ -168,6 +216,228 @@ function mergeButtonSettings(existing, { text, link }, defaults = {}) {
     borderRadius: existing?.borderRadius,
     padding: existing?.padding,
   };
+}
+
+function pickFields(source, keys) {
+  const output = {};
+  keys.forEach((key) => {
+    if (source?.[key] !== undefined && source?.[key] !== null) {
+      output[key] = source[key];
+    }
+  });
+  return output;
+}
+
+/** Remove Strapi component ids so PUT payloads do not reference unrelated entities. */
+function stripNestedComponentIds(value) {
+  if (Array.isArray(value)) return value.map(stripNestedComponentIds);
+  if (!value || typeof value !== "object") return value;
+  const output = {};
+  Object.entries(value).forEach(([key, nestedValue]) => {
+    if (key === "id" || key === "__component") return;
+    output[key] = stripNestedComponentIds(nestedValue);
+  });
+  return output;
+}
+
+function serializeMenuItems(items = []) {
+  return items
+    .filter((item) => item?.label)
+    .map((item) => ({
+      label: item.label || "",
+      link: item.link || "#",
+    }));
+}
+
+function serializeGlobalTheme(existing = {}, form) {
+  return {
+    ...pickFields(existing, [
+      "accentOrange",
+      "navyColor",
+      "tealColor",
+      "headingFontSize",
+      "bodyFontSize",
+      "borderRadius",
+      "containerWidth",
+      "sectionSpacing",
+    ]),
+    primaryColor: form.primaryColor,
+    secondaryColor: form.secondaryColor,
+    backgroundColor: form.backgroundColor,
+    textColor: form.textColor,
+    fontFamily: form.fontFamily,
+    headingFontFamily: form.headingFontFamily,
+  };
+}
+
+function serializeRailSettings(existing = {}, form) {
+  return {
+    ...pickFields(existing, ["logoColor"]),
+    backgroundColor: form.railBg,
+    width: form.railWidth,
+    showLogo: form.showRailLogo,
+  };
+}
+
+function serializeSocialLinks(links = []) {
+  return (links || []).map((link) => ({
+    platform: link?.platform || "",
+    url: link?.url || "",
+    icon: mediaId(link?.icon),
+  }));
+}
+
+function serializeImageSettingsPayload(imageSettings) {
+  if (!imageSettings) return undefined;
+  return {
+    altText: imageSettings.altText || "",
+    image: mediaId(imageSettings.image) ?? null,
+  };
+}
+
+function serializeColorSettings(colorSettings) {
+  if (!colorSettings) return undefined;
+  return pickFields(colorSettings, ["backgroundColor", "textColor", "primaryColor", "secondaryColor"]);
+}
+
+function serializeTypographySettings(typography) {
+  if (!typography) return undefined;
+  return pickFields(typography, ["fontFamily", "fontSize", "fontWeight", "lineHeight"]);
+}
+
+function serializeSpacingSettings(spacing) {
+  if (!spacing) return undefined;
+  return pickFields(spacing, ["padding", "margin", "gap"]);
+}
+
+function serializeStatItems(items = []) {
+  return items
+    .filter((item) => item?.value && item?.label)
+    .map((item) => ({
+      value: item.value || "",
+      label: item.label || "",
+    }));
+}
+
+function serializeMinistryItemsForSection(items = []) {
+  return items
+    .filter((item) => item?.title)
+    .map((item) => ({
+      title: item.title || "",
+      description: item.description || "",
+      buttonText: item.buttonText || "",
+      link: item.link || "#",
+      image: mediaId(item.image) ?? null,
+    }));
+}
+
+function serializeNewsItemsForSection(items = []) {
+  return items
+    .filter((item) => item?.title)
+    .map((item) => ({
+      tag: item.tag || "",
+      date: item.date || "",
+      title: item.title || "",
+      excerpt: item.excerpt || "",
+      link: item.link || "",
+      image: mediaId(item.image) ?? null,
+    }));
+}
+
+function serializeVideoItemsForSection(items = []) {
+  return items
+    .filter((item) => item?.title)
+    .map((item) => ({
+      title: item.title || "",
+      description: item.description || "",
+      duration: item.duration || "",
+      link: item.link || "",
+      thumbnail: mediaId(item.thumbnail) ?? null,
+      video: mediaId(item.video) ?? null,
+    }));
+}
+
+function serializeDonationItems(items = []) {
+  return items
+    .filter((item) => item?.amount)
+    .map((item) => ({
+      amount: typeof item.amount === "object" ? String(item.amount?.amount || "") : String(item.amount || ""),
+      link: item.link || "",
+    }));
+}
+
+function serializeJsonField(value) {
+  if (value == null) return undefined;
+  if (typeof value === "string") {
+    try {
+      return JSON.parse(value);
+    } catch {
+      return undefined;
+    }
+  }
+  return stripNestedComponentIds(value);
+}
+
+function serializeHomeSection(section) {
+  if (!section) return section;
+
+  const output = {
+    sectionName: section.sectionName,
+    title: section.title,
+    subtitle: section.subtitle,
+    description: section.description,
+    layoutType: section.layoutType,
+    displayOrder: section.displayOrder,
+    isActive: section.isActive !== false,
+    borderRadius: section.borderRadius,
+    containerWidth: section.containerWidth,
+  };
+
+  const buttonSettings = section.buttonSettings
+    ? mergeButtonSettings(section.buttonSettings, {}, {})
+    : undefined;
+  const secondaryButtonSettings = section.secondaryButtonSettings
+    ? mergeButtonSettings(section.secondaryButtonSettings, {}, {})
+    : undefined;
+  const imageSettings = serializeImageSettingsPayload(section.imageSettings);
+  const colorSettings = serializeColorSettings(section.colorSettings);
+  const titleTypography = serializeTypographySettings(section.titleTypography);
+  const subtitleTypography = serializeTypographySettings(section.subtitleTypography);
+  const bodyTypography = serializeTypographySettings(section.bodyTypography);
+  const spacingSettings = serializeSpacingSettings(section.spacingSettings);
+  const statItems = Array.isArray(section.statItems) ? serializeStatItems(section.statItems) : undefined;
+  const ministryItems = Array.isArray(section.ministryItems)
+    ? serializeMinistryItemsForSection(section.ministryItems)
+    : undefined;
+  const newsItems = Array.isArray(section.newsItems) ? serializeNewsItemsForSection(section.newsItems) : undefined;
+  const videoItems = Array.isArray(section.videoItems) ? serializeVideoItemsForSection(section.videoItems) : undefined;
+  const donationItems = Array.isArray(section.donationItems) ? serializeDonationItems(section.donationItems) : undefined;
+  const items = serializeJsonField(section.items);
+  const mediaItems = serializeJsonField(section.mediaItems);
+  const featuredItems = serializeJsonField(section.featuredItems);
+
+  if (buttonSettings) output.buttonSettings = buttonSettings;
+  if (secondaryButtonSettings) output.secondaryButtonSettings = secondaryButtonSettings;
+  if (imageSettings) output.imageSettings = imageSettings;
+  if (colorSettings) output.colorSettings = colorSettings;
+  if (titleTypography) output.titleTypography = titleTypography;
+  if (subtitleTypography) output.subtitleTypography = subtitleTypography;
+  if (bodyTypography) output.bodyTypography = bodyTypography;
+  if (spacingSettings) output.spacingSettings = spacingSettings;
+  if (statItems?.length) output.statItems = statItems;
+  if (ministryItems?.length) output.ministryItems = ministryItems;
+  if (newsItems?.length) output.newsItems = newsItems;
+  if (videoItems?.length) output.videoItems = videoItems;
+  if (donationItems?.length) output.donationItems = donationItems;
+  if (items) output.items = items;
+  if (mediaItems) output.mediaItems = mediaItems;
+  if (featuredItems) output.featuredItems = featuredItems;
+
+  return output;
+}
+
+function serializeSectionsForStrapi(sections = []) {
+  return (sections || []).map(serializeHomeSection);
 }
 
 function serializeSitePagesForStrapiComponent(navigationPages = []) {
@@ -191,10 +461,13 @@ function serializeSitePagesForStrapiComponent(navigationPages = []) {
     });
 }
 
-function normalizeNavigationPage(page) {
+function normalizeNavigationPage(page, index = 0) {
   const slug = page.slug || slugify(page.title);
   const pageType = page.pageType || "content";
   return {
+    pageId: page.pageId || page.id || createPageId(),
+    parentId: page.parentId || null,
+    menuOrder: typeof page.menuOrder === "number" ? page.menuOrder : index,
     title: page.title || "",
     slug,
     link: page.link || (pageType === "link" ? "#" : `/${slug}`),
@@ -212,6 +485,7 @@ function normalizeNavigationPage(page) {
     pageButtonLink: page.pageButtonLink || "",
     bannerImage: extractMediaRef(page.bannerImage || (page.showBannerImage ? page.heroImage : null)),
     sideImage: extractMediaRef(page.sideImage || (page.showSideImage || page.showHeroImage ? page.heroImage : null)),
+    sections: serializePageSections(ensurePageSections(page)),
   };
 }
 
@@ -226,6 +500,9 @@ function serializeSitePagesForStorage(navigationPages = []) {
       const sideImage = extractMediaRef(page.sideImage || (page.showSideImage || page.showHeroImage ? heroImage : null));
       const primaryImage = bannerImage.id || bannerImage.url ? bannerImage : sideImage;
       return {
+        pageId: page.pageId || page.id || createPageId(),
+        parentId: page.parentId || null,
+        menuOrder: typeof page.menuOrder === "number" ? page.menuOrder : 0,
         title: page.title,
         slug,
         link: pageType === "link" ? page.link || "#" : `/${slug}`,
@@ -235,14 +512,15 @@ function serializeSitePagesForStorage(navigationPages = []) {
         visible: page.visible !== false,
         showInHeader: page.showInHeader !== false,
         showInFooter: page.showInFooter === true,
-        heroImage: primaryImage.id || primaryImage.url ? primaryImage : emptyMediaRef(),
+        heroImage: normalizeMediaRefForStorage(primaryImage.id || primaryImage.url ? primaryImage : emptyMediaRef()),
         showBannerImage: page.showBannerImage === true,
         showSideImage: page.showSideImage === true || page.showHeroImage === true,
         showPageButton: page.showPageButton === true,
         pageButtonText: page.pageButtonText || "",
         pageButtonLink: page.pageButtonLink || "",
-        bannerImage: bannerImage.id || bannerImage.url ? bannerImage : emptyMediaRef(),
-        sideImage: sideImage.id || sideImage.url ? sideImage : emptyMediaRef(),
+        bannerImage: normalizeMediaRefForStorage(bannerImage.id || bannerImage.url ? bannerImage : emptyMediaRef()),
+        sideImage: normalizeMediaRefForStorage(sideImage.id || sideImage.url ? sideImage : emptyMediaRef()),
+        sections: serializePageSections(ensurePageSections(page)),
       };
     });
 }
@@ -338,7 +616,7 @@ function buildNavigationPages(headerMenu, footerLinks) {
 
 function loadSitePages(data, headerMenu, footerLinks) {
   const fromMenus = buildNavigationPages(headerMenu, footerLinks);
-  const stored = getStoredSitePagesRaw(data).map((page) => normalizeNavigationPage(page));
+  const stored = getStoredSitePagesRaw(data).map((page, index) => normalizeNavigationPage(page, index));
 
   if (!stored.length) return fromMenus;
 
@@ -352,6 +630,9 @@ function loadSitePages(data, headerMenu, footerLinks) {
       merged.push({
         ...menuPage,
         ...match,
+        pageId: match.pageId || menuPage.pageId,
+        parentId: match.parentId ?? menuPage.parentId ?? null,
+        menuOrder: match.menuOrder ?? menuPage.menuOrder,
         title: match.title || menuPage.title,
         showInHeader: menuPage.showInHeader || match.showInHeader,
         showInFooter: menuPage.showInFooter || match.showInFooter,
@@ -365,7 +646,7 @@ function loadSitePages(data, headerMenu, footerLinks) {
     if (!usedStored.has(page)) merged.push(page);
   });
 
-  return merged.length ? merged : fromMenus;
+  return ensurePageIds(merged.length ? merged : fromMenus).map((page, index) => normalizeNavigationPage(page, index));
 }
 
 /** Keep edited page content on the in-memory CMS record when the API omits sitePages. */
@@ -434,6 +715,10 @@ export function buildFormFromData(data) {
       id: heroImageRef.id,
       url: heroImageRef.url || hero?.items?.heroImageUrl || "",
     },
+    heroSlides: loadHeroSlides(hero, {
+      id: heroImageRef.id,
+      url: heroImageRef.url || hero?.items?.heroImageUrl || "",
+    }),
     heroPrimaryBtnText: hero?.buttonSettings?.text || sampleHomePage.hero.primaryCta.text,
     heroPrimaryBtnLink: hero?.buttonSettings?.link || sampleHomePage.hero.primaryCta.link,
     heroSecondaryBtnText: hero?.secondaryButtonSettings?.text || sampleHomePage.hero.secondaryCta.text,
@@ -509,7 +794,9 @@ function stripMeta(value) {
   if (!value || typeof value !== "object") return value;
   const output = {};
   Object.entries(value).forEach(([key, nestedValue]) => {
-    if (["id", "documentId", "createdAt", "updatedAt", "publishedAt"].includes(key)) return;
+    if (["id", "__component", "documentId", "createdAt", "updatedAt", "publishedAt", "locale", "localizations"].includes(key)) {
+      return;
+    }
     output[key] = stripMeta(nestedValue);
   });
   return output;
@@ -518,8 +805,23 @@ function stripMeta(value) {
 function upsertSection(sections, sectionName, patch) {
   const next = [...(sections || [])];
   const index = next.findIndex((item) => item.sectionName === sectionName);
-  if (index >= 0) next[index] = { ...next[index], ...patch, sectionName, isActive: true };
-  else next.push({ sectionName, isActive: true, displayOrder: next.length + 1, ...patch });
+  const existing = index >= 0 ? next[index] : null;
+  const merged = {
+    displayOrder: patch.displayOrder ?? existing?.displayOrder ?? next.length + 1,
+    layoutType: existing?.layoutType ?? patch.layoutType,
+    borderRadius: existing?.borderRadius ?? patch.borderRadius,
+    containerWidth: existing?.containerWidth ?? patch.containerWidth,
+    titleTypography: existing?.titleTypography,
+    subtitleTypography: existing?.subtitleTypography,
+    bodyTypography: existing?.bodyTypography,
+    spacingSettings: existing?.spacingSettings,
+    ...patch,
+    sectionName,
+    isActive: true,
+  };
+
+  if (index >= 0) next[index] = merged;
+  else next.push(merged);
   return next;
 }
 
@@ -535,12 +837,7 @@ export function buildPayloadFromForm(form, existingData) {
     existingAbout?.items && typeof existingAbout.items === "object" ? existingAbout.items : {};
   const existingServices = getSection(existingData?.sections, "services");
 
-  const headerMenuFromPages = navigationPages
-    .filter((item) => item.visible !== false && item.showInHeader !== false)
-    .map((item) => ({
-      label: item.title,
-      link: item.pageType === "link" ? item.link || "#" : `/${item.slug || slugify(item.title)}`,
-    }));
+  const headerMenuFromPages = menuNodesToHeaderItems(buildMenuTree(ensurePageIds(navigationPages)));
   const footerLinksFromPages = navigationPages
     .filter((item) => item.visible !== false && item.showInFooter === true)
     .map((item) => ({
@@ -577,15 +874,23 @@ export function buildPayloadFromForm(form, existingData) {
       imageMedia: item.imageMedia || emptyMediaRef(),
     }));
 
+  const heroSlides = (form.heroSlides || []).filter((slide) => slide.imageMedia?.url || mediaId(slide.imageMedia));
+  const primaryHeroImage = heroSlides[0]?.imageMedia || form.heroImage;
+
   const sections = upsertSection(existingData?.sections || [], "hero", {
     displayOrder: 1,
     title: joinHeroTitle(form.heroLine1, form.heroLine2),
     subtitle: form.heroSubtitle,
     description: form.heroDescription,
-    imageSettings: serializeImageSettings(existingHero?.imageSettings, form.heroImage),
+    imageSettings: serializeImageSettings(existingHero?.imageSettings, primaryHeroImage),
     items: {
       ...existingHeroItems,
-      heroImageUrl: form.heroImage?.url || "",
+      heroImageUrl: normalizeStoredUrl(primaryHeroImage?.url || form.heroImage?.url || ""),
+      heroSlides: heroSlides.map((slide) => ({
+        imageUrl: normalizeStoredUrl(slide.imageMedia?.url || ""),
+        imageId: mediaId(slide.imageMedia),
+        durationSeconds: Number(slide.durationSeconds) > 0 ? Number(slide.durationSeconds) : 5,
+      })),
     },
     buttonSettings: mergeButtonSettings(existingHero?.buttonSettings, {
       text: form.heroPrimaryBtnText,
@@ -604,13 +909,12 @@ export function buildPayloadFromForm(form, existingData) {
     description: form.missionDescription,
     imageSettings: serializeImageSettings(existingAbout?.imageSettings, form.missionImage),
     colorSettings: {
-      ...(existingAbout?.colorSettings || {}),
       backgroundColor: form.missionBgColor,
       textColor: form.missionTextColor,
     },
     items: {
       ...existingAboutItems,
-      missionImageUrl: form.missionImage?.url || "",
+      missionImageUrl: normalizeStoredUrl(form.missionImage?.url || ""),
     },
     statItems: form.missionStats.filter((item) => item.value && item.label),
   });
@@ -631,7 +935,7 @@ export function buildPayloadFromForm(form, existingData) {
       description: item.description,
       buttonText: item.buttonText,
       link: item.link,
-      image: item.imageMedia?.url || "",
+      image: normalizeStoredUrl(item.imageMedia?.url || ""),
     })),
     buttonSettings: mergeButtonSettings(existingServices?.buttonSettings, {
       text: form.ministriesCtaText,
@@ -653,7 +957,7 @@ export function buildPayloadFromForm(form, existingData) {
       tag: item.tag,
       date: item.date,
       title: item.title,
-      image: item.imageMedia?.url || "",
+      image: normalizeStoredUrl(item.imageMedia?.url || ""),
     })),
     videoItems: videoItems.map((item) => ({
       title: item.title,
@@ -665,8 +969,8 @@ export function buildPayloadFromForm(form, existingData) {
     mediaItems: videoItems.map((item) => ({
       title: item.title,
       description: item.description,
-      image: item.thumbnailMedia?.url || "",
-      videoUrl: item.videoMedia?.url || item.videoLink || "",
+      image: normalizeStoredUrl(item.thumbnailMedia?.url || ""),
+      videoUrl: normalizeStoredUrl(item.videoMedia?.url || item.videoLink || ""),
     })),
   });
 
@@ -682,7 +986,7 @@ export function buildPayloadFromForm(form, existingData) {
     imageSettings: serializeImageSettings(existingContact?.imageSettings, form.supportImage),
     items: {
       ...existingContactItems,
-      backgroundImageUrl: form.supportImage?.url || "",
+      backgroundImageUrl: normalizeStoredUrl(form.supportImage?.url || ""),
       sitePages: storedSitePages,
     },
     donationItems: form.supportAmounts.filter((item) => item.amount),
@@ -693,53 +997,39 @@ export function buildPayloadFromForm(form, existingData) {
   });
 
   return stripMeta({
-    globalTheme: {
-      ...(existingData?.globalTheme || {}),
-      primaryColor: form.primaryColor,
-      secondaryColor: form.secondaryColor,
-      backgroundColor: form.backgroundColor,
-      textColor: form.textColor,
-      fontFamily: form.fontFamily,
-      headingFontFamily: form.headingFontFamily,
-    },
-    railSettings: {
-      ...(existingData?.railSettings || {}),
-      backgroundColor: form.railBg,
-      width: form.railWidth,
-      showLogo: form.showRailLogo,
-    },
+    globalTheme: serializeGlobalTheme(existingData?.globalTheme, form),
+    railSettings: serializeRailSettings(existingData?.railSettings, form),
     headerSettings: {
-      ...(existingData?.headerSettings || {}),
+      ...pickFields(existingData?.headerSettings, ["fontFamily", "stickyHeader"]),
       backgroundColor: form.headerBg,
       textColor: form.headerText,
       logo: mediaId(form.headerLogo),
-      menuItems: headerMenuFromPages.length
-        ? headerMenuFromPages
-        : form.headerMenu.filter((item) => item.label),
+      menuItems: serializeMenuItems(
+        headerMenuFromPages.length ? headerMenuFromPages : form.headerMenu,
+      ),
       ctaButton: mergeButtonSettings(existingData?.headerSettings?.ctaButton, {
         text: form.headerCtaText,
         link: form.headerCtaLink,
       }, { backgroundColor: "#0b6f7d", textColor: "#ffffff" }),
     },
     footerSettings: {
-      ...(existingData?.footerSettings || {}),
       description: form.footerDescription,
       copyrightText: form.footerCopyright,
       logo: mediaId(form.footerLogo),
-      footerLinks: footerLinksFromPages.length
-        ? footerLinksFromPages
-        : form.footerLinks.filter((item) => item.label),
+      footerLinks: serializeMenuItems(
+        footerLinksFromPages.length ? footerLinksFromPages : form.footerLinks,
+      ),
+      socialLinks: serializeSocialLinks(existingData?.footerSettings?.socialLinks),
       backgroundColor: form.footerBg,
       textColor: form.footerText,
     },
     seoSettings: {
-      ...(existingData?.seoSettings || {}),
       metaTitle: form.seoMetaTitle,
       metaDescription: form.seoMetaDescription,
       keywords: form.seoKeywords,
       ogImage: mediaId(form.seoOgImage),
     },
     sitePages: strapiSitePages,
-    sections: sections5,
+    sections: serializeSectionsForStrapi(sections5),
   });
 }

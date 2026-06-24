@@ -1,3 +1,5 @@
+import { buildMenuTree, ensurePageIds, menuNodesToHeaderItems } from "./menuUtils";
+
 export function slugify(value = "") {
   return value
     .toLowerCase()
@@ -8,12 +10,46 @@ export function slugify(value = "") {
     .replace(/^-|-$/g, "");
 }
 
+function parseJsonValue(value, fallback = null) {
+  if (value == null) return fallback;
+  if (typeof value === "string") {
+    try {
+      return JSON.parse(value);
+    } catch {
+      return fallback;
+    }
+  }
+  return value;
+}
+
 function getContactSection(sections) {
   return (sections || []).find((item) => item.sectionName === "contact") || null;
 }
 
+function getSectionItems(section) {
+  if (!section) return {};
+  const items = parseJsonValue(section.items, section.items);
+  return items && typeof items === "object" && !Array.isArray(items) ? items : {};
+}
+
+function normalizeSectionsForRead(sections = []) {
+  return (sections || []).map((section) => {
+    if (!section || typeof section !== "object") return section;
+    const items = getSectionItems(section);
+    const mediaItems = parseJsonValue(section.mediaItems, section.mediaItems);
+    const featuredItems = parseJsonValue(section.featuredItems, section.featuredItems);
+    return {
+      ...section,
+      ...(items ? { items } : {}),
+      ...(mediaItems && typeof mediaItems === "object" ? { mediaItems } : {}),
+      ...(featuredItems && typeof featuredItems === "object" ? { featuredItems } : {}),
+    };
+  });
+}
+
 export function getStoredSitePagesRaw(data) {
-  const fromItems = getContactSection(data?.sections)?.items?.sitePages;
+  const contactItems = getSectionItems(getContactSection(data?.sections));
+  const fromItems = contactItems?.sitePages;
   if (Array.isArray(fromItems) && fromItems.length) {
     return fromItems;
   }
@@ -25,13 +61,27 @@ export function getStoredSitePagesRaw(data) {
   return [];
 }
 
-/** Attach sitePages from CMS JSON storage for public site + admin reload. */
+/** Attach sitePages + rebuild nested header menu for public site and admin reload. */
 export function enrichHomePageData(data) {
   if (!data) return data;
-  const stored = getStoredSitePagesRaw(data);
-  if (!stored.length) return data;
-  if (Array.isArray(data.sitePages) && data.sitePages.length) return data;
-  return { ...data, sitePages: stored };
+
+  const sections = normalizeSectionsForRead(data.sections);
+  const stored = getStoredSitePagesRaw({ ...data, sections });
+  const enriched = { ...data, sections };
+
+  if (stored.length) {
+    enriched.sitePages = stored;
+
+    const menuItems = menuNodesToHeaderItems(buildMenuTree(ensurePageIds(stored)));
+    if (menuItems.length) {
+      enriched.headerSettings = {
+        ...(enriched.headerSettings || {}),
+        menuItems,
+      };
+    }
+  }
+
+  return enriched;
 }
 
 export function pagePublicLink(page) {

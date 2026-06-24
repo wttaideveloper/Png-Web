@@ -27,10 +27,29 @@ export default function App() {
   }, []);
 
   useEffect(() => {
+    function onCmsUpdated() {
+      fetchHomePage()
+        .then((result) => {
+          if (result) setData(result);
+        })
+        .catch(() => {});
+      if (window.location.pathname !== "/admin-portal") {
+        setReloadKey((key) => key + 1);
+      }
+    }
+    window.addEventListener("pngum-cms-updated", onCmsUpdated);
+    return () => window.removeEventListener("pngum-cms-updated", onCmsUpdated);
+  }, []);
+
+  useEffect(() => {
     let cancelled = false;
+    const isAdminRoute = pathname === "/admin-portal";
 
     async function loadPage() {
-      setLoading(true);
+      // Keep the admin editor mounted during background refreshes.
+      if (!isAdminRoute || !data) {
+        setLoading(true);
+      }
       setError("");
 
       try {
@@ -54,7 +73,7 @@ export default function App() {
     return () => {
       cancelled = true;
     };
-  }, [reloadKey]);
+  }, [reloadKey, pathname]);
 
   const theme = useMemo(() => ({ ...fallbackTheme, ...(data?.globalTheme || {}) }), [data]);
   const railSettings = data?.railSettings || { backgroundColor: "#f08a16", width: "132px", showLogo: true };
@@ -97,7 +116,7 @@ export default function App() {
     }
   }, [data?.seoSettings]);
 
-  if (loading) return <LoadingState />;
+  if (loading && !(pathname === "/admin-portal" && data)) return <LoadingState />;
   if (error) {
     return <ErrorState message={error} onRetry={() => setReloadKey((key) => key + 1)} />;
   }

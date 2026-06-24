@@ -31,6 +31,34 @@ const fallbackMenu = [
   { label: "Giving", link: "#support" },
 ];
 
+function NavItem({ item, idx, resolveNavHref, closeMenu }) {
+  const children = Array.isArray(item.children) ? item.children.filter((child) => child?.label) : [];
+  const href = resolveNavHref(item.link);
+
+  if (!children.length) {
+    return (
+      <a key={`${item.label}-${idx}`} href={href} onClick={closeMenu}>
+        {item.label}
+      </a>
+    );
+  }
+
+  return (
+    <div key={`${item.label}-${idx}`} className="header-nav-group">
+      <a href={href} onClick={closeMenu} className="header-nav-parent">
+        {item.label}
+      </a>
+      <div className="header-nav-dropdown">
+        {children.map((child, childIdx) => (
+          <a key={`${child.label}-${childIdx}`} href={resolveNavHref(child.link)} onClick={closeMenu}>
+            {child.label}
+          </a>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 export default function Header({ settings }) {
   const [menuOpen, setMenuOpen] = useState(false);
 
@@ -125,9 +153,7 @@ export default function Header({ settings }) {
         >
           <div className="header-nav-panel">
             {menuItems.map((item, idx) => (
-              <a key={`${item.label}-${idx}`} href={resolveNavHref(item.link)} onClick={closeMenu}>
-                {item.label}
-              </a>
+              <NavItem key={`${item.label}-${idx}`} item={item} idx={idx} resolveNavHref={resolveNavHref} closeMenu={closeMenu} />
             ))}
           </div>
         </nav>
