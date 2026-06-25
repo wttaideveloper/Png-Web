@@ -2147,6 +2147,39 @@ body.nav-open {
   gap: 0.75rem;
   border-right: 1px solid rgba(255, 255, 255, 0.08);
   z-index: 30;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(172, 204, 236, 0.9) rgba(255, 255, 255, 0.05);
+}
+
+.admin-sidebar-v2::-webkit-scrollbar {
+  width: 10px;
+}
+
+.admin-sidebar-v2::-webkit-scrollbar-track {
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.12) 0%, rgba(255, 255, 255, 0.04) 100%);
+  border-radius: 999px;
+  margin: 6px 0;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.admin-sidebar-v2::-webkit-scrollbar-thumb {
+  background: linear-gradient(180deg, #c0daf2 0%, #8fb7de 45%, #7ea5cf 100%);
+  border-radius: 999px;
+  border: 2px solid rgba(7, 26, 49, 0.72);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.35), 0 1px 3px rgba(3, 13, 25, 0.28);
+  min-height: 42px;
+}
+
+.admin-sidebar-v2::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(180deg, #d2e6fa 0%, #9ec3e8 50%, #89aed4 100%);
+}
+
+.admin-sidebar-v2::-webkit-scrollbar-thumb:active {
+  background: linear-gradient(180deg, #e2f0ff 0%, #a8c9eb 50%, #91b2d5 100%);
+}
+
+.admin-sidebar-v2::-webkit-scrollbar-corner {
+  background: transparent;
 }
 
 .admin-sidebar-v2-collapsed {
@@ -4027,6 +4060,20 @@ body.nav-open {
   margin: 0.15rem 0 0;
 }
 
+.admin-confirm-modal {
+  width: min(520px, 100%);
+}
+
+.admin-confirm-danger-btn {
+  border-color: #fecaca;
+  color: #b42318;
+  background: #fff5f5;
+}
+
+.admin-confirm-danger-btn:hover {
+  background: #ffe7e7;
+}
+
 .admin-menu-toolbar-actions {
   display: flex;
   flex-wrap: wrap;
@@ -4054,6 +4101,14 @@ body.nav-open {
   box-shadow: 0 0 0 2px rgba(22, 101, 52, 0.15);
 }
 
+.admin-menu-row-submenu {
+  background: #ffffff;
+  border-color: #e2e8f0;
+  margin-left: 2.2rem;
+  margin-right: 0.35rem;
+  padding: 0.62rem 0.75rem;
+}
+
 .admin-menu-drag,
 .admin-menu-expand {
   border: 0;
@@ -4079,6 +4134,12 @@ body.nav-open {
 .admin-menu-row-title {
   font-weight: 700;
   color: #0f172a;
+}
+
+.admin-menu-row-submenu .admin-menu-row-title {
+  font-size: 0.92rem;
+  font-weight: 600;
+  color: #334155;
 }
 
 .admin-menu-visibility-pill,
@@ -4159,6 +4220,63 @@ body.nav-open {
 
 .admin-menu-show-toggle input:checked + .admin-menu-show-slider::after {
   transform: translateX(1rem);
+}
+
+.admin-menu-remove-btn {
+  color: #b42318;
+}
+
+.admin-menu-remove-btn:hover {
+  border-color: #fecaca;
+  background: #fff5f5;
+}
+
+.admin-menu-inline-edit {
+  display: grid;
+  grid-template-columns: minmax(180px, 280px) minmax(260px, 1fr);
+  gap: 0.6rem;
+  margin: 0.15rem 0 0.45rem;
+}
+
+.admin-menu-inline-edit-submenu {
+  margin-top: 0.05rem;
+  margin-left: 2.35rem;
+  padding-left: 0.4rem !important;
+}
+
+.admin-menu-inline-field {
+  display: grid;
+  gap: 0.25rem;
+}
+
+.admin-menu-inline-field span {
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: #64748b;
+}
+
+.admin-menu-inline-field input {
+  border: 1px solid #e2e8f0;
+  border-radius: 0.45rem;
+  padding: 0.42rem 0.55rem;
+  font-size: 0.84rem;
+  background: #fff;
+  color: #0f172a;
+}
+
+.admin-menu-inline-field input:focus {
+  outline: 2px solid rgba(22, 101, 52, 0.18);
+  border-color: #166534;
+}
+
+.admin-menu-inline-edit-submenu .admin-menu-inline-field span {
+  font-size: 0.68rem;
+  color: #64748b;
+}
+
+.admin-menu-inline-edit-submenu .admin-menu-inline-field input {
+  font-size: 0.8rem;
+  padding: 0.35rem 0.5rem;
 }
 
 .admin-menu-preview-strip {
@@ -4477,6 +4595,11 @@ body.nav-open {
 
   .admin-menu-row-controls {
     grid-column: 1 / -1;
+  }
+
+  .admin-menu-inline-edit {
+    grid-template-columns: 1fr;
+    padding-right: 0.4rem;
   }
 }
 

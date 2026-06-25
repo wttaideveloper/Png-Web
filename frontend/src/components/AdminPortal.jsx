@@ -20,6 +20,7 @@ import SupportSectionEditor from "./admin/SupportSectionEditor";
 import HomepageBuilderEditor from "./admin/HomepageBuilderEditor";
 import FooterSectionEditor from "./admin/FooterSectionEditor";
 import SeoSectionEditor from "./admin/SeoSectionEditor";
+import ConfirmDialog from "./admin/ConfirmDialog";
 import { findPanel } from "./admin/panelConfig";
 import { slugify } from "../utils/pageUtils";
 import { emptyMediaRef } from "../styles/themeUtils";
@@ -72,6 +73,8 @@ export default function AdminPortal({ data, onSaved }) {
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const [navSearch, setNavSearch] = useState("");
   const [toast, setToast] = useState({ message: "", type: "success" });
+  const [publishConfirmOpen, setPublishConfirmOpen] = useState(false);
+  const [restoreConfirmOpen, setRestoreConfirmOpen] = useState(false);
 
   function openPanel(panelId) {
     setActivePanel(panelId);
@@ -219,12 +222,7 @@ export default function AdminPortal({ data, onSaved }) {
     }
   }
 
-  async function onPublishLive() {
-    const confirmed = window.confirm(
-      "Publish these changes to the live site now?\n\nAll homepage sections, hero slider, pages, and menu will update on the public website.",
-    );
-    if (!confirmed) return;
-
+  async function runPublishLive() {
     setPublishing(true);
     setMessage("");
     setError("");
@@ -241,15 +239,16 @@ export default function AdminPortal({ data, onSaved }) {
     }
   }
 
-  async function onRestoreLastLive() {
+  function onPublishLive() {
+    setPublishConfirmOpen(true);
+  }
+
+  async function runRestoreLastLive() {
     const backup = readLastLiveBackup();
     if (!backup?.payload) {
       showToast("No backup found yet. Publish once to create backup.", "error");
       return;
     }
-
-    const confirmed = window.confirm("Restore the previous live version now?");
-    if (!confirmed) return;
 
     setRestoring(true);
     setMessage("");
@@ -269,6 +268,15 @@ export default function AdminPortal({ data, onSaved }) {
     } finally {
       setRestoring(false);
     }
+  }
+
+  function onRestoreLastLive() {
+    const backup = readLastLiveBackup();
+    if (!backup?.payload) {
+      showToast("No backup found yet. Publish once to create backup.", "error");
+      return;
+    }
+    setRestoreConfirmOpen(true);
   }
 
   useEffect(() => {
@@ -584,6 +592,31 @@ export default function AdminPortal({ data, onSaved }) {
 
           <AdminToast message={toast.message || error} type={toast.message ? toast.type : error ? "error" : "success"} onClose={() => { setToast({ message: "", type: "success" }); setError(""); }} />
           {message && !toast.message ? <p className="ok-msg">{message}</p> : null}
+          <ConfirmDialog
+            open={publishConfirmOpen}
+            title="Publish changes to live website?"
+            message="All homepage sections, hero slider, pages, and menu will update on the public website."
+            confirmLabel={publishing ? "Publishing..." : "Publish now"}
+            cancelLabel="Cancel"
+            onCancel={() => setPublishConfirmOpen(false)}
+            onConfirm={async () => {
+              setPublishConfirmOpen(false);
+              await runPublishLive();
+            }}
+          />
+          <ConfirmDialog
+            open={restoreConfirmOpen}
+            title="Restore previous live version?"
+            message="This will replace current live homepage content with your last backup."
+            confirmLabel={restoring ? "Restoring..." : "Restore"}
+            cancelLabel="Cancel"
+            danger
+            onCancel={() => setRestoreConfirmOpen(false)}
+            onConfirm={async () => {
+              setRestoreConfirmOpen(false);
+              await runRestoreLastLive();
+            }}
+          />
         </div>
       </div>
     </div>

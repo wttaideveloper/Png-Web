@@ -31,6 +31,7 @@ import { getImageUrl } from "../../styles/themeUtils";
 import { normalizeVideoSlots, videoSectionPreview } from "../../utils/videoEmbed";
 import MediaUploadField from "./MediaUploadField";
 import PageSamplePicker from "./PageSamplePicker";
+import ConfirmDialog from "./ConfirmDialog";
 import { TextArea, TextInput } from "./editorUi";
 
 const TYPE_ICONS = {
@@ -327,6 +328,7 @@ export default function PageSectionBuilder({
   const selected = typeof activeIndex === "number" ? activeIndex : 0;
   const current = list[selected];
   const [addOpen, setAddOpen] = useState(false);
+  const [pendingRemoveIndex, setPendingRemoveIndex] = useState(null);
   const [dragIndex, setDragIndex] = useState(null);
   const [dropIndex, setDropIndex] = useState(null);
 
@@ -369,9 +371,15 @@ export default function PageSectionBuilder({
   }
 
   function removeSection(index) {
-    if (!window.confirm("Remove this block from the page?")) return;
+    setPendingRemoveIndex(index);
+  }
+
+  function confirmRemoveSection() {
+    if (pendingRemoveIndex == null) return;
+    const index = pendingRemoveIndex;
     const next = list.filter((_, i) => i !== index);
     applySections(next, Math.max(0, Math.min(index, next.length - 1)));
+    setPendingRemoveIndex(null);
   }
 
   function moveSection(index, direction) {
@@ -565,6 +573,16 @@ export default function PageSectionBuilder({
           ) : null}
         </div>
       </div>
+      <ConfirmDialog
+        open={pendingRemoveIndex != null}
+        title="Remove this block?"
+        message="This section block will be removed from the page."
+        confirmLabel="Remove"
+        cancelLabel="Cancel"
+        danger
+        onCancel={() => setPendingRemoveIndex(null)}
+        onConfirm={confirmRemoveSection}
+      />
     </div>
   );
 }

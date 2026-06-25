@@ -5,6 +5,7 @@ import { pagePublicLink } from "../../utils/pageUtils";
 import { getImageUrl } from "../../styles/themeUtils";
 import NewPageWizard from "./NewPageWizard";
 import PageEditModal from "./PageEditModal";
+import ConfirmDialog from "./ConfirmDialog";
 
 function pageThumb(page) {
   const sections = ensurePageSections(page);
@@ -17,6 +18,7 @@ export default function PagesTableEditor({ pages, onAdd, onUpdate, onRemove, api
   const [showWizard, setShowWizard] = useState(false);
   const [editingPageId, setEditingPageId] = useState(null);
   const [isNewPage, setIsNewPage] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState(null);
 
   const editingIndex = useMemo(() => {
     if (!editingPageId) return -1;
@@ -31,10 +33,16 @@ export default function PagesTableEditor({ pages, onAdd, onUpdate, onRemove, api
 
   function handleDelete(index) {
     const page = pages[index];
-    if (!window.confirm(`Delete "${page?.title || "this page"}"?`)) return;
+    setDeleteTarget({ index, title: page?.title || "this page" });
+  }
+
+  function confirmDeletePage() {
+    if (deleteTarget == null) return;
+    const page = pages[deleteTarget.index];
     const pageId = page?.pageId || page?.id;
-    onRemove(index);
+    onRemove(deleteTarget.index);
     if (pageId && pageId === editingPageId) closeEditor();
+    setDeleteTarget(null);
   }
 
   function openEditor(index, isNew = false) {
@@ -158,6 +166,16 @@ export default function PagesTableEditor({ pages, onAdd, onUpdate, onRemove, api
           isNew={isNewPage}
         />
       ) : null}
+      <ConfirmDialog
+        open={Boolean(deleteTarget)}
+        title="Delete page?"
+        message={`Delete "${deleteTarget?.title || "this page"}"?`}
+        confirmLabel="Delete"
+        cancelLabel="Cancel"
+        danger
+        onCancel={() => setDeleteTarget(null)}
+        onConfirm={confirmDeletePage}
+      />
     </div>
   );
 }
