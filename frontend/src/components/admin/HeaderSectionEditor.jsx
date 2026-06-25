@@ -12,7 +12,8 @@ import {
 } from "./editorUi";
 
 export default function HeaderSectionEditor({ form, updateField, apiToken }) {
-  const logoUrl = getImageUrl(form.headerLogo?.url);
+  const logoUrl = getImageUrl(form.headerLogo);
+  const railLogoUrl = getImageUrl(form.railLogo);
 
   return (
     <SectionEditorShell
@@ -48,9 +49,16 @@ export default function HeaderSectionEditor({ form, updateField, apiToken }) {
                 <ColorField label="Rail color" value={form.railBg} onChange={(v) => updateField("railBg", v)} />
                 <TextInput label="Rail width" value={form.railWidth} onChange={(v) => updateField("railWidth", v)} placeholder="132px" />
               </div>
+              <MediaUploadField
+                label="Rail logo"
+                apiToken={apiToken}
+                value={form.railLogo}
+                onChange={(v) => updateField("railLogo", v)}
+                helpText="Replaces the default SDA logo in the right rail. Leave empty to use the built-in logo."
+              />
               <CheckboxField
                 id="show-rail-logo"
-                label="Show SDA logo in right rail"
+                label="Show logo in right rail"
                 checked={form.showRailLogo}
                 onChange={(v) => updateField("showRailLogo", v)}
               />
@@ -68,7 +76,13 @@ export default function HeaderSectionEditor({ form, updateField, apiToken }) {
               <div className="admin-header-preview-page">
                 <div className="admin-header-preview-content" style={{ background: form.backgroundColor || "#efefea" }} />
                 <div className="admin-header-preview-rail" style={{ background: form.railBg, width: form.railWidth || "48px" }}>
-                  {form.showRailLogo ? <span>✦</span> : null}
+                  {form.showRailLogo ? (
+                    railLogoUrl ? (
+                      <img src={railLogoUrl} alt="" className="admin-header-preview-rail-logo" />
+                    ) : (
+                      <span>✦</span>
+                    )
+                  ) : null}
                 </div>
               </div>
             </div>

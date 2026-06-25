@@ -12,12 +12,12 @@ function parseItems(items) {
   return items;
 }
 
-function slideImageUrl(slide) {
-  return getImageUrl(
-    slide?.imageUrl ||
-      slide?.image ||
-      slide?.imageMedia?.url ||
-      slide?.imageMedia
+function slideImageUrl(slide, fallbackUrl = "") {
+  return (
+    getImageUrl(slide?.imageUrl) ||
+    getImageUrl(slide?.image) ||
+    getImageUrl(slide?.imageMedia) ||
+    getImageUrl(fallbackUrl)
   );
 }
 
@@ -25,18 +25,19 @@ function slideImageUrl(slide) {
 export function resolveHeroSlides(hero) {
   const items = parseItems(hero?.items);
   const fromItems = Array.isArray(items.heroSlides) ? items.heroSlides : [];
+  const heroFallback =
+    getImageUrl(hero?.imageSettings?.image) || getImageUrl(items.heroImageUrl);
 
   const slides = fromItems
     .map((slide) => ({
-      imageUrl: slideImageUrl(slide),
+      imageUrl: slideImageUrl(slide, items.heroImageUrl || heroFallback),
       durationSeconds: Number(slide.durationSeconds) > 0 ? Number(slide.durationSeconds) : 5,
     }))
     .filter((slide) => slide.imageUrl);
 
   if (slides.length) return slides;
 
-  const fallback = getImageUrl(hero?.imageSettings?.image, items.heroImageUrl);
-  if (fallback) return [{ imageUrl: fallback, durationSeconds: 5 }];
+  if (heroFallback) return [{ imageUrl: heroFallback, durationSeconds: 5 }];
   return [];
 }
 

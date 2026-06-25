@@ -66,8 +66,31 @@ export function enrichHomePageData(data) {
   if (!data) return data;
 
   const sections = normalizeSectionsForRead(data.sections);
+  const contactSection = getContactSection(sections);
+  const contactItems = getSectionItems(contactSection);
   const stored = getStoredSitePagesRaw({ ...data, sections });
   const enriched = { ...data, sections };
+
+  if (contactItems?.headerLogoUrl || contactItems?.footerLogoUrl || contactItems?.railLogoUrl) {
+    if (contactItems.headerLogoUrl) {
+      enriched.headerSettings = {
+        ...(enriched.headerSettings || {}),
+        logoUrl: contactItems.headerLogoUrl,
+      };
+    }
+    if (contactItems.footerLogoUrl) {
+      enriched.footerSettings = {
+        ...(enriched.footerSettings || {}),
+        logoUrl: contactItems.footerLogoUrl,
+      };
+    }
+    if (contactItems.railLogoUrl) {
+      enriched.railSettings = {
+        ...(enriched.railSettings || {}),
+        logoUrl: contactItems.railLogoUrl,
+      };
+    }
+  }
 
   if (stored.length) {
     enriched.sitePages = stored;

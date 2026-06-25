@@ -107,6 +107,7 @@ export interface PageRailSettings extends Struct.ComponentSchema {
   attributes: {
     backgroundColor: Schema.Attribute.String &
       Schema.Attribute.DefaultTo<'#f08a16'>;
+    logo: Schema.Attribute.Media<'images'>;
     logoColor: Schema.Attribute.String & Schema.Attribute.DefaultTo<'#ffffff'>;
     showLogo: Schema.Attribute.Boolean & Schema.Attribute.DefaultTo<true>;
     width: Schema.Attribute.String & Schema.Attribute.DefaultTo<'132px'>;

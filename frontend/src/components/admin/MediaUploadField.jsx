@@ -19,7 +19,7 @@ export default function MediaUploadField({
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState("");
 
-  const previewUrl = value?.url ? getImageUrl(value.url) : "";
+  const previewUrl = value?.url ? getImageUrl(value) : "";
   const showVideo = mode === "video" || isVideoUrl(previewUrl);
 
   async function handleFileChange(event) {
@@ -32,7 +32,7 @@ export default function MediaUploadField({
       const uploaded = await uploadMedia(file, apiToken);
       onChange({
         id: uploaded.id,
-        url: uploaded.url,
+        url: uploaded.url || "",
         mime: uploaded.mime,
         name: uploaded.name,
       });

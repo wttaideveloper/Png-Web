@@ -109,17 +109,22 @@ export const applyThemeToDocument = (theme, railSettings) => {
 
 const MEDIA_HOST = (import.meta.env.VITE_STRAPI_API_URL || "http://localhost:1337/api").replace(/\/api\/?$/, "");
 
-export const getImageUrl = (image) => {
-  if (typeof image === "string") {
-    if (image.startsWith("http")) return image;
-    return `${MEDIA_HOST}${image}`;
-  }
+function resolveMediaSource(image) {
+  if (image == null) return "";
+  if (typeof image === "string") return image;
+  if (typeof image === "number") return "";
 
-  const source =
+  return (
     image?.url ||
     image?.data?.attributes?.url ||
     image?.formats?.medium?.url ||
-    image?.formats?.large?.url;
+    image?.formats?.large?.url ||
+    ""
+  );
+}
+
+export const getImageUrl = (image, fallbackUrl = "") => {
+  const source = resolveMediaSource(image) || (typeof fallbackUrl === "string" ? fallbackUrl : resolveMediaSource(fallbackUrl));
 
   if (!source) return "";
 

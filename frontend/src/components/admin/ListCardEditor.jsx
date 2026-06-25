@@ -11,20 +11,21 @@ export default function ListCardEditor({
   itemLabel = (index, item) => item.title || item.label || item.amount || `Item ${index + 1}`,
 }) {
   function updateItem(index, key, value) {
-    onChange(items.map((item, idx) => (idx === index ? { ...item, [key]: value } : item)));
+    const list = items || [];
+    onChange(list.map((item, idx) => (idx === index ? { ...item, [key]: value } : item)));
   }
 
   function removeItem(index) {
-    onChange(items.filter((_, idx) => idx !== index));
+    onChange((items || []).filter((_, idx) => idx !== index));
   }
 
   function addItem() {
-    onChange([...items, { ...emptyItem }]);
+    onChange([...(items || []), { ...emptyItem }]);
   }
 
   return (
     <div className="admin-list-editor">
-      {items.map((item, index) => (
+      {(items || []).map((item, index) => (
         <div key={index} className="admin-list-card">
           <div className="admin-list-card-head">
             <strong>{itemLabel(index, item)}</strong>

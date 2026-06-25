@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { AnimatePresence } from "framer-motion";
 import { LogOut, Menu, Moon, RefreshCw, Save, Sun } from "lucide-react";
-import { fetchAdminHomePage, fetchCurrentUser, fetchHomePage, loginAdmin, publishHomePage, saveAndPublishHomePage, saveHomePageDraft } from "../api/strapi";
+import { fetchAdminHomePage, fetchCurrentUser, fetchHomePage, loginAdmin, saveAndPublishHomePage, saveHomePageDraft } from "../api/strapi";
 import { buildFormFromData, buildPayloadFromForm, applyNavigationPagesToData, enrichHomePageData } from "./admin/adminFormState";
 import { createPageId } from "../utils/menuUtils";
 import { sectionsFromTemplate } from "../utils/pageSections";
@@ -51,7 +51,7 @@ const panels = [
 ];
 
 export default function AdminPortal({ data, onSaved }) {
-  const LAST_LIVE_BACKUP_KEY = "portal_last_live_backup_payload_v1";
+  const LAST_LIVE_BACKUP_KEY = "portal_undo_last_save_v1";
   const [apiToken, setApiToken] = useState(() => localStorage.getItem("portal_token") || "");
   const [user, setUser] = useState(null);
   const [checkingSession, setCheckingSession] = useState(true);
@@ -163,18 +163,23 @@ export default function AdminPortal({ data, onSaved }) {
     return buildPayloadFromForm(liveForm, data);
   }
 
-  function persistLastLiveBackup(payload) {
+  function persistUndoBackup(payload, label = "Before last save") {
     if (!payload) return;
     localStorage.setItem(
       LAST_LIVE_BACKUP_KEY,
       JSON.stringify({
         savedAt: new Date().toISOString(),
+        label,
         payload,
       }),
     );
   }
 
-  function readLastLiveBackup() {
+  function clearUndoBackup() {
+    localStorage.removeItem(LAST_LIVE_BACKUP_KEY);
+  }
+
+  function readUndoBackup() {
     try {
       const raw = localStorage.getItem(LAST_LIVE_BACKUP_KEY);
       if (!raw) return null;
@@ -185,17 +190,36 @@ export default function AdminPortal({ data, onSaved }) {
     }
   }
 
+  /** Snapshot the currently published live site (one step back for undo). */
+  async function captureUndoBackupBeforeSave() {
+    try {
+      const published = await fetchHomePage();
+      if (!published) return;
+      const liveForm = buildFormFromData(published);
+      persistUndoBackup(buildPayloadFromForm(liveForm, published), "Before last save");
+    } catch {
+      const fallback = buildBackupPayloadFromCurrentLive();
+      if (fallback) persistUndoBackup(fallback, "Before last save");
+    }
+  }
+
   function notifySiteUpdated() {
     window.dispatchEvent(new CustomEvent("pngum-cms-updated"));
   }
 
   async function persistHomepage({ publish = true } = {}) {
+    if (publish) {
+      await captureUndoBackupBeforeSave();
+    }
     const payload = buildCurrentPayload();
     const savedNavigationPages = form.navigationPages || [];
-    const saved = publish
-      ? await saveAndPublishHomePage(payload, apiToken)
-      : await saveHomePageDraft(payload, apiToken);
-    let fresh = enrichHomePageData(saved || (await fetchAdminHomePage(apiToken)));
+    if (publish) {
+      await saveAndPublishHomePage(payload, apiToken);
+    } else {
+      await saveHomePageDraft(payload, apiToken);
+    }
+
+    let fresh = enrichHomePageData(publish ? await fetchHomePage() : await fetchAdminHomePage(apiToken));
     fresh = applyNavigationPagesToData(fresh, savedNavigationPages);
     onSaved(fresh);
     setForm(buildFormFromData(fresh));
@@ -227,7 +251,6 @@ export default function AdminPortal({ data, onSaved }) {
     setMessage("");
     setError("");
     try {
-      persistLastLiveBackup(buildBackupPayloadFromCurrentLive());
       await persistHomepage({ publish: true });
       showToast("Homepage published to the live website.");
     } catch (err) {
@@ -244,9 +267,9 @@ export default function AdminPortal({ data, onSaved }) {
   }
 
   async function runRestoreLastLive() {
-    const backup = readLastLiveBackup();
+    const backup = readUndoBackup();
     if (!backup?.payload) {
-      showToast("No backup found yet. Publish once to create backup.", "error");
+      showToast("No undo point yet. Save to the website once, then you can undo that save.", "error");
       return;
     }
 
@@ -254,15 +277,19 @@ export default function AdminPortal({ data, onSaved }) {
     setMessage("");
     setError("");
     try {
-      const saved = await publishHomePage(backup.payload, apiToken);
-      const fresh = enrichHomePageData(saved || (await fetchHomePage()));
+      const savedNavigationPages = buildFormFromData(backup.payload).navigationPages || [];
+      await saveAndPublishHomePage(backup.payload, apiToken);
+      let fresh = enrichHomePageData(await fetchHomePage());
+      fresh = applyNavigationPagesToData(fresh, savedNavigationPages);
       onSaved(fresh);
       setForm(buildFormFromData(fresh));
       setHasChanges(false);
       setLastSavedAt(new Date().toLocaleTimeString());
-      showToast("Restored previous live version.");
+      clearUndoBackup();
+      notifySiteUpdated();
+      showToast("Undid your last save. The website is back to the previous version.");
     } catch (err) {
-      const text = err.message || "Restore failed";
+      const text = err.message || "Undo failed";
       setError(text);
       showToast(text, "error");
     } finally {
@@ -271,9 +298,9 @@ export default function AdminPortal({ data, onSaved }) {
   }
 
   function onRestoreLastLive() {
-    const backup = readLastLiveBackup();
+    const backup = readUndoBackup();
     if (!backup?.payload) {
-      showToast("No backup found yet. Publish once to create backup.", "error");
+      showToast("No undo point yet. Save to the website once, then you can undo that save.", "error");
       return;
     }
     setRestoreConfirmOpen(true);
@@ -498,7 +525,7 @@ export default function AdminPortal({ data, onSaved }) {
                 </button>
                 <button type="button" className="admin-ghost-btn" onClick={onRestoreLastLive} disabled={saving || publishing || restoring}>
                   <RefreshCw size={16} />
-                  {restoring ? "Restoring..." : "Restore Last Live"}
+                  {restoring ? "Undoing..." : "Undo Last Save"}
                 </button>
               </div>
 
@@ -606,9 +633,9 @@ export default function AdminPortal({ data, onSaved }) {
           />
           <ConfirmDialog
             open={restoreConfirmOpen}
-            title="Restore previous live version?"
-            message="This will replace current live homepage content with your last backup."
-            confirmLabel={restoring ? "Restoring..." : "Restore"}
+            title="Undo your last save?"
+            message="This will roll back only the most recent save/publish and restore the website to how it looked right before that save."
+            confirmLabel={restoring ? "Undoing..." : "Undo last save"}
             cancelLabel="Cancel"
             danger
             onCancel={() => setRestoreConfirmOpen(false)}

@@ -11,7 +11,7 @@ import {
 } from "./editorUi";
 
 export default function MinistriesSectionEditor({ form, updateField, updateListField, apiToken }) {
-  const items = form.ministryItems?.length ? form.ministryItems : sampleHomePage.ministries.items;
+  const items = form.ministryItems || [];
 
   return (
     <SectionEditorShell
@@ -61,7 +61,7 @@ export default function MinistriesSectionEditor({ form, updateField, updateListF
               </div>
               <div className="admin-ministries-preview-grid">
                 {items.slice(0, 3).map((item, i) => {
-                  const img = getImageUrl(item.imageMedia?.url);
+                  const img = getImageUrl(item.imageMedia);
                   return (
                     <article key={i} className="admin-ministry-card-preview">
                       <div className="admin-ministry-card-cover" style={img ? { backgroundImage: `url(${img})` } : undefined} />

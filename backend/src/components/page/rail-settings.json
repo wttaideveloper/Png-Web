@@ -5,6 +5,7 @@
     "backgroundColor": { "type": "string", "default": "#f08a16" },
     "width": { "type": "string", "default": "132px" },
     "showLogo": { "type": "boolean", "default": true },
-    "logoColor": { "type": "string", "default": "#ffffff" }
+    "logoColor": { "type": "string", "default": "#ffffff" },
+    "logo": { "type": "media", "allowedTypes": ["images"], "multiple": false }
   }
 }

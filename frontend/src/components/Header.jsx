@@ -91,7 +91,7 @@ export default function Header({ settings }) {
   }, [menuOpen]);
 
   const menuItems = settings?.menuItems?.length ? settings.menuItems : fallbackMenu;
-  const logo = settings ? getImageUrl(settings.logo) : null;
+  const logo = settings?.logo || settings?.logoUrl ? getImageUrl(settings.logo, settings.logoUrl) : null;
   const currentPath = typeof window !== "undefined" ? window.location.pathname : "/";
 
   function resolveNavHref(rawLink) {

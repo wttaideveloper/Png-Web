@@ -22,7 +22,7 @@ function hasStoredSitePages(data) {
 function buildPopulateQuery({ includeSitePages = false } = {}) {
   const params = new URLSearchParams();
   params.set("populate[globalTheme][populate]", "*");
-  params.set("populate[railSettings]", "true");
+  params.set("populate[railSettings][populate]", "logo");
   params.set("populate[headerSettings][populate]", "*");
   params.set("populate[footerSettings][populate]", "*");
   params.set("populate[sections][populate][imageSettings][populate]", "image");
@@ -44,7 +44,7 @@ function buildPopulateQuery({ includeSitePages = false } = {}) {
 
 const fallbackQueries = [
   buildPopulateQuery({ includeSitePages: false }),
-  "populate[footerSettings][populate]=*&populate[headerSettings][populate]=*&populate[sections][populate]=*&populate[globalTheme][populate]=*&populate[railSettings]=true&populate[seoSettings][populate]=*",
+  "populate[footerSettings][populate]=*&populate[headerSettings][populate]=*&populate[sections][populate]=*&populate[globalTheme][populate]=*&populate[railSettings][populate]=logo&populate[seoSettings][populate]=*",
   "populate[footerSettings][populate]=*",
   "populate=*",
   "",

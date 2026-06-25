@@ -70,12 +70,25 @@ function getYouTubeEmbedUrl(rawUrl = "") {
   return "";
 }
 
+function parseFeaturedItems(section) {
+  const raw = section?.featuredItems;
+  if (!raw) return {};
+  if (typeof raw === "string") {
+    try {
+      return JSON.parse(raw) || {};
+    } catch {
+      return {};
+    }
+  }
+  return typeof raw === "object" && !Array.isArray(raw) ? raw : {};
+}
+
 function ministryImage(item) {
-  return resolveMediaUrl(item.image, item.thumbnail, item.imageMedia?.url);
+  return resolveMediaUrl(item.image, item.imageUrl, item.thumbnail, item.thumbnailMedia?.url);
 }
 
 function videoThumb(video) {
-  return resolveMediaUrl(video.thumbnail, video.image, video.thumbnailMedia?.url);
+  return resolveMediaUrl(video.thumbnail, video.image, video.imageUrl, video.thumbnailMedia?.url);
 }
 
 function videoSource(video) {
@@ -94,9 +107,11 @@ function normalizeMinistryItems(section) {
   if (components.length) {
     return components.map((item) => {
       const jsonItem = jsonItems.find((entry) => entry.title === item.title);
+      const imageUrl = typeof jsonItem?.image === "string" ? jsonItem.image : "";
       return {
         ...item,
-        image: item.image || jsonItem?.image,
+        image: item.image || imageUrl,
+        imageUrl,
       };
     });
   }
@@ -111,18 +126,23 @@ function normalizeVideoItems(section) {
   if (components.length) {
     return components.map((item) => {
       const jsonItem = jsonItems.find((entry) => entry.title === item.title);
+      const thumbUrl = typeof jsonItem?.image === "string" ? jsonItem.image : "";
+      const videoUrl = item.link || jsonItem?.videoUrl || "";
       return {
         ...item,
         thumbnail: item.thumbnail,
-        image: jsonItem?.image,
-        videoUrl: item.link || jsonItem?.videoUrl,
-        video: item.video,
-        link: item.link || jsonItem?.videoUrl,
+        image: thumbUrl,
+        imageUrl: thumbUrl,
+        videoUrl,
+        link: videoUrl,
       };
     });
   }
 
-  return jsonItems;
+  return jsonItems.map((item) => ({
+    ...item,
+    link: item.videoUrl || item.link || "",
+  }));
 }
 
 function normalizeNewsItems(section) {
@@ -132,14 +152,20 @@ function normalizeNewsItems(section) {
   if (components.length) {
     return components.map((item) => {
       const jsonItem = jsonItems.find((entry) => entry.title === item.title);
+      const imageUrl = typeof jsonItem?.image === "string" ? jsonItem.image : "";
       return {
         ...item,
-        image: item.image || jsonItem?.image,
+        image: item.image || imageUrl,
+        imageUrl,
       };
     });
   }
 
-  return jsonItems;
+  return jsonItems.map((item) => ({
+    ...item,
+    image: item.image,
+    imageUrl: typeof item.image === "string" ? item.image : "",
+  }));
 }
 
 function VideoBlock({ video, className }) {
@@ -203,13 +229,14 @@ export default function PngumHomePage({ sections = [] }) {
       : {}),
   };
 
-  const missionStats = mergeItems(about?.statItems, about?.items, sampleHomePage.mission.stats);
+  const missionStats = about?.statItems?.length ? about.statItems : [];
   const ministryItems = normalizeMinistryItems(ministriesSection);
-  const resolvedMinistryItems = ministryItems.length ? ministryItems.slice(0, 6) : sampleHomePage.ministries.items;
+  const resolvedMinistryItems = ministryItems.slice(0, 6);
   const updatesItems = normalizeNewsItems(updatesSection);
-  const resolvedNewsItems = updatesItems.length ? updatesItems : sampleHomePage.updates.news;
+  const resolvedNewsItems = updatesItems;
   const videoItems = normalizeVideoItems(updatesSection);
-  const resolvedVideoItems = videoItems.length ? videoItems : sampleHomePage.updates.videos;
+  const resolvedVideoItems = videoItems;
+  const updatesFeatured = parseFeaturedItems(updatesSection);
   const supportImage = resolveMediaUrl(supportSection?.imageSettings?.image, supportSection?.items?.backgroundImageUrl);
   const supportStyle = {
     ...parseSectionStyle(supportSection),
@@ -276,75 +303,104 @@ export default function PngumHomePage({ sections = [] }) {
 
       {renderCustomBlocks("after-mission")}
 
+      {(ministriesSection?.title || ministriesSection?.subtitle || resolvedMinistryItems.length) ? (
       <section className="pngum-ministries" id="ministries" aria-labelledby="ministries-heading" style={parseSectionStyle(ministriesSection)}>
         <div className="container">
           <div className="section-head">
             <div>
               <p className="eyebrow" style={parseTypography(ministriesSection?.subtitleTypography)}>
-                {ministriesSection?.subtitle || sampleHomePage.ministries.eyebrow}
+                {ministriesSection?.subtitle || ""}
               </p>
               <h2 id="ministries-heading" style={parseTypography(ministriesSection?.titleTypography)}>
-                {ministriesSection?.title || sampleHomePage.ministries.title}
+                {ministriesSection?.title || ""}
               </h2>
             </div>
-            <a href={ministriesSection?.buttonSettings?.link || "#"} style={parseButtonStyle(ministriesSection?.buttonSettings)}>
-              {ministriesSection?.buttonSettings?.text || `${sampleHomePage.ministries.ctaText} →`}
+            <a
+              href={ministriesSection?.buttonSettings?.link || "#"}
+              style={parseButtonStyle(ministriesSection?.buttonSettings)}
+            >
+              {ministriesSection?.buttonSettings?.text || "View all ministries →"}
             </a>
           </div>
           <div className="ministry-grid">
-            {resolvedMinistryItems.map((item, idx) => (
-              <article key={`${item.title}-${idx}`} className="ministry-card">
-                <div className="ministry-cover" style={coverStyle(ministryImage(item))} />
-                <div className="ministry-body">
-                  <h3>{item.title}</h3>
-                  <p>{item.desc || item.description}</p>
-                  <a href={item.link || "#"}>{item.cta || item.buttonText || "Learn More"} →</a>
-                </div>
-              </article>
-            ))}
+            {resolvedMinistryItems.length ? (
+              resolvedMinistryItems.map((item, idx) => (
+                <article key={`${item.title}-${idx}`} className="ministry-card">
+                  <div className="ministry-cover" style={coverStyle(ministryImage(item))} />
+                  <div className="ministry-body">
+                    <h3>{item.title}</h3>
+                    <p>{item.desc || item.description}</p>
+                    <a href={item.link || "#"}>{item.cta || item.buttonText || "Learn More"} →</a>
+                  </div>
+                </article>
+              ))
+            ) : null}
           </div>
         </div>
       </section>
+      ) : null}
 
       {renderCustomBlocks("after-ministries")}
 
+      {(updatesSection?.title || updatesSection?.subtitle || resolvedNewsItems.length || resolvedVideoItems.length) ? (
       <section className="pngum-updates" id="updates" aria-labelledby="updates-heading" style={parseSectionStyle(updatesSection)}>
         <div className="container updates-layout">
           <div>
             <p className="eyebrow" style={parseTypography(updatesSection?.subtitleTypography)}>
-              {updatesSection?.subtitle || sampleHomePage.updates.eyebrow}
+              {updatesSection?.subtitle || ""}
             </p>
             <h2 id="updates-heading" style={parseTypography(updatesSection?.titleTypography)}>
-              {updatesSection?.title || sampleHomePage.updates.title}
+              {updatesSection?.title || ""}
             </h2>
-            <div className="news-list">
-              {resolvedNewsItems.map((item, idx) => (
-                <article key={`${item.title}-${idx}`} className="news-item">
-                  {resolveMediaUrl(item.image) && (
-                    <div className="news-thumb" style={coverStyle(resolveMediaUrl(item.image))} />
-                  )}
-                  <div className="news-meta">
-                    <span>{item.tag || item.category || "News"}</span> {item.date || item.publishedAt || ""}
-                  </div>
-                  <h3>{item.title}</h3>
-                </article>
-              ))}
-            </div>
+            {resolvedNewsItems.length ? (
+              <>
+                <div className="updates-subhead">
+                  <h3>{updatesFeatured?.newsHeading || "News & Announcements"}</h3>
+                  {updatesFeatured?.allNewsLink ? (
+                    <a href={updatesFeatured.allNewsLink}>All news →</a>
+                  ) : null}
+                </div>
+                <div className="news-list">
+                  {resolvedNewsItems.map((item, idx) => (
+                    <article key={`${item.title}-${idx}`} className="news-item">
+                      {resolveMediaUrl(item.image, item.imageUrl) && (
+                        <div className="news-thumb" style={coverStyle(resolveMediaUrl(item.image, item.imageUrl))} />
+                      )}
+                      <div className="news-meta">
+                        <span>{item.tag || item.category || "News"}</span> {item.date || item.publishedAt || ""}
+                      </div>
+                      <h3>{item.title}</h3>
+                    </article>
+                  ))}
+                </div>
+              </>
+            ) : null}
           </div>
           <div>
-            {resolvedVideoItems[0] ? <VideoBlock video={resolvedVideoItems[0]} className="video-large" /> : null}
-            <div className="video-grid">
-              {resolvedVideoItems.slice(1).map((video, idx) => (
-                <article key={`${video.title}-${idx}`} className="video-card">
-                  <VideoBlock video={video} className="video-thumb" />
-                  <h3>{video.title}</h3>
-                  <p>{video.meta || video.description || ""}</p>
-                </article>
-              ))}
-            </div>
+            {resolvedVideoItems.length ? (
+              <>
+                <div className="updates-subhead">
+                  <h3>{updatesFeatured?.videosHeading || "Featured Videos"}</h3>
+                  {updatesFeatured?.allVideosLink ? (
+                    <a href={updatesFeatured.allVideosLink}>View all videos →</a>
+                  ) : null}
+                </div>
+                {resolvedVideoItems[0] ? <VideoBlock video={resolvedVideoItems[0]} className="video-large" /> : null}
+                <div className="video-grid">
+                  {resolvedVideoItems.slice(1).map((video, idx) => (
+                    <article key={`${video.title}-${idx}`} className="video-card">
+                      <VideoBlock video={video} className="video-thumb" />
+                      <h3>{video.title}</h3>
+                      <p>{video.meta || video.description || ""}</p>
+                    </article>
+                  ))}
+                </div>
+              </>
+            ) : null}
           </div>
         </div>
       </section>
+      ) : null}
 
       {renderCustomBlocks("after-updates")}
 

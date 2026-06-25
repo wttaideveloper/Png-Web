@@ -53,13 +53,14 @@ function loadMinistryItems(section) {
       const imageRef = extractMediaRef(item.image);
       const jsonItem = findJsonItem(jsonItems, item.title);
       const jsonImage = typeof jsonItem?.image === "string" ? jsonItem.image : "";
+      const jsonImageId = jsonItem?.imageId || null;
       return {
         title: item.title || "",
         description: item.description || item.desc || "",
         buttonText: item.buttonText || item.cta || "Learn More",
         link: item.link || "#",
         imageMedia: {
-          id: imageRef.id,
+          id: imageRef.id || jsonImageId,
           url: imageRef.url || jsonImage,
         },
       };
@@ -86,19 +87,16 @@ function loadVideoItems(section) {
   if (components.length) {
     return components.map((item) => {
       const thumbRef = extractMediaRef(item.thumbnail);
-      const videoRef = extractMediaRef(item.video);
       const jsonItem = findJsonItem(jsonItems, item.title);
+      const thumbUrl = thumbRef.url || jsonItem?.image || "";
+      const thumbId = thumbRef.id || jsonItem?.imageId || null;
       return {
         title: item.title || "",
         description: item.description || item.meta || "",
         videoLink: item.link || jsonItem?.videoUrl || "",
         thumbnailMedia: {
-          id: thumbRef.id,
-          url: thumbRef.url || jsonItem?.image || "",
-        },
-        videoMedia: {
-          id: videoRef.id,
-          url: videoRef.url || jsonItem?.videoUrl || "",
+          id: thumbId,
+          url: thumbUrl,
         },
       };
     });
@@ -108,9 +106,8 @@ function loadVideoItems(section) {
     return jsonItems.map((item) => ({
       title: item.title || "",
       description: item.description || item.meta || "",
-      videoLink: item.link || item.videoUrl || "",
+      videoLink: item.videoUrl || item.link || "",
       thumbnailMedia: extractMediaRef(item.image || item.thumbnail),
-      videoMedia: extractMediaRef(item.videoUrl || item.video),
     }));
   }
 
@@ -124,13 +121,15 @@ function loadNewsItems(section) {
     return components.map((item) => {
       const jsonItem = findJsonItem(jsonItems, item.title);
       const imageRef = extractMediaRef(item.image || jsonItem?.image);
+      const jsonImage = typeof jsonItem?.image === "string" ? jsonItem.image : "";
+      const jsonImageId = jsonItem?.imageId || null;
       return {
         tag: item.tag || "",
         date: item.date || "",
         title: item.title || "",
         imageMedia: {
-          id: imageRef.id,
-          url: imageRef.url || (typeof jsonItem?.image === "string" ? jsonItem.image : ""),
+          id: imageRef.id || jsonImageId,
+          url: imageRef.url || jsonImage,
         },
       };
     });
@@ -145,16 +144,44 @@ function loadNewsItems(section) {
     }));
   }
 
-  return sampleHomePage.updates.news.map((item) => ({
-    tag: item.tag || "",
-    date: item.date || "",
-    title: item.title || "",
-    imageMedia: emptyMediaRef(),
-  }));
+  return [];
+}
+
+function parseFeaturedItems(section) {
+  const raw = section?.featuredItems;
+  if (!raw) return {};
+  if (typeof raw === "string") {
+    try {
+      return JSON.parse(raw) || {};
+    } catch {
+      return {};
+    }
+  }
+  return typeof raw === "object" && !Array.isArray(raw) ? raw : {};
+}
+
+function getSectionItemsObject(section) {
+  if (!section?.items) return {};
+  if (typeof section.items === "string") {
+    try {
+      const parsed = JSON.parse(section.items);
+      return parsed && typeof parsed === "object" && !Array.isArray(parsed) ? parsed : {};
+    } catch {
+      return {};
+    }
+  }
+  return typeof section.items === "object" && !Array.isArray(section.items) ? section.items : {};
 }
 
 function mediaId(ref) {
   return ref?.id || undefined;
+}
+
+function resolveMediaId(ref) {
+  if (ref == null) return null;
+  if (typeof ref === "number") return ref;
+  if (typeof ref === "string" && /^\d+$/.test(ref)) return Number(ref);
+  return ref?.id ?? ref?.data?.id ?? null;
 }
 
 function normalizeStoredUrl(url = "") {
@@ -162,7 +189,10 @@ function normalizeStoredUrl(url = "") {
   if (url.startsWith("http://") || url.startsWith("https://")) {
     try {
       const parsed = new URL(url);
-      return `${parsed.pathname}${parsed.search}`;
+      if (parsed.pathname.startsWith("/uploads/")) {
+        return `${parsed.pathname}${parsed.search}`;
+      }
+      return url;
     } catch {
       return url;
     }
@@ -178,14 +208,6 @@ function normalizeMediaRefForStorage(ref) {
   };
 }
 
-function serializeImageSettings(existingSettings, imageRef) {
-  const hasImage = Boolean(mediaId(imageRef) || imageRef?.url);
-  return {
-    altText: existingSettings?.altText || "",
-    image: hasImage ? mediaId(imageRef) ?? null : null,
-  };
-}
-
 function loadHeroSlides(hero, heroImageRef) {
   let items = hero?.items;
   if (typeof items === "string") {
@@ -197,13 +219,17 @@ function loadHeroSlides(hero, heroImageRef) {
   }
   const raw = Array.isArray(items?.heroSlides) ? items.heroSlides : [];
   if (raw.length) {
-    return raw.map((slide) => ({
-      imageMedia: {
-        id: slide.imageId || null,
-        url: slide.imageUrl || slide.image || "",
-      },
-      durationSeconds: Number(slide.durationSeconds) > 0 ? Number(slide.durationSeconds) : 5,
-    }));
+    return raw.map((slide) => {
+      const id = slide.imageId || null;
+      let url = slide.imageUrl || slide.image || "";
+      if (!url && id && heroImageRef?.id === id && heroImageRef?.url) {
+        url = heroImageRef.url;
+      }
+      return {
+        imageMedia: { id, url },
+        durationSeconds: Number(slide.durationSeconds) > 0 ? Number(slide.durationSeconds) : 5,
+      };
+    });
   }
   if (heroImageRef?.url || heroImageRef?.id) {
     return [{ imageMedia: heroImageRef, durationSeconds: 5 }];
@@ -257,8 +283,6 @@ function serializeMenuItems(items = []) {
 function serializeGlobalTheme(existing = {}, form) {
   return {
     ...pickFields(existing, [
-      "accentOrange",
-      "navyColor",
       "tealColor",
       "headingFontSize",
       "bodyFontSize",
@@ -268,10 +292,31 @@ function serializeGlobalTheme(existing = {}, form) {
     ]),
     primaryColor: form.primaryColor,
     secondaryColor: form.secondaryColor,
+    accentOrange: form.primaryColor,
+    navyColor: form.secondaryColor,
     backgroundColor: form.backgroundColor,
     textColor: form.textColor,
     fontFamily: form.fontFamily,
     headingFontFamily: form.headingFontFamily,
+  };
+}
+
+function serializeImageSettings(existingSettings, imageRef) {
+  const existingId = resolveMediaId(existingSettings?.image);
+  const newId = resolveMediaId(imageRef);
+  const hasImage = Boolean(newId || imageRef?.url || existingId);
+
+  return {
+    altText: existingSettings?.altText || "",
+    image: newId ?? (hasImage ? existingId : null),
+  };
+}
+
+function serializeImageSettingsPayload(imageSettings) {
+  if (!imageSettings) return undefined;
+  return {
+    altText: imageSettings.altText || "",
+    image: resolveMediaId(imageSettings.image) ?? null,
   };
 }
 
@@ -281,6 +326,7 @@ function serializeRailSettings(existing = {}, form) {
     backgroundColor: form.railBg,
     width: form.railWidth,
     showLogo: form.showRailLogo,
+    logo: resolveMediaId(form.railLogo),
   };
 }
 
@@ -290,14 +336,6 @@ function serializeSocialLinks(links = []) {
     url: link?.url || "",
     icon: mediaId(link?.icon),
   }));
-}
-
-function serializeImageSettingsPayload(imageSettings) {
-  if (!imageSettings) return undefined;
-  return {
-    altText: imageSettings.altText || "",
-    image: mediaId(imageSettings.image) ?? null,
-  };
 }
 
 function serializeColorSettings(colorSettings) {
@@ -332,7 +370,7 @@ function serializeMinistryItemsForSection(items = []) {
       description: item.description || "",
       buttonText: item.buttonText || "",
       link: item.link || "#",
-      image: mediaId(item.image) ?? null,
+      image: resolveMediaId(item.image ?? item.imageMedia) ?? null,
     }));
 }
 
@@ -345,7 +383,7 @@ function serializeNewsItemsForSection(items = []) {
       title: item.title || "",
       excerpt: item.excerpt || "",
       link: item.link || "",
-      image: mediaId(item.image) ?? null,
+      image: resolveMediaId(item.image ?? item.imageMedia) ?? null,
     }));
 }
 
@@ -356,9 +394,8 @@ function serializeVideoItemsForSection(items = []) {
       title: item.title || "",
       description: item.description || "",
       duration: item.duration || "",
-      link: item.link || "",
-      thumbnail: mediaId(item.thumbnail) ?? null,
-      video: mediaId(item.video) ?? null,
+      link: item.link || item.videoLink || "",
+      thumbnail: resolveMediaId(item.thumbnail ?? item.thumbnailMedia) ?? null,
     }));
 }
 
@@ -674,10 +711,13 @@ export function buildFormFromData(data) {
   const services = getSection(enriched?.sections, "services");
   const updates = getSection(enriched?.sections, "products");
   const support = getSection(enriched?.sections, "contact");
+  const contactItems = getSectionItemsObject(support);
+  const updatesFeatured = parseFeaturedItems(updates);
   const [heroLine1, heroLine2] = splitHeroTitle(hero?.title);
   const heroImageRef = extractMediaRef(hero?.imageSettings?.image);
   const missionImageRef = extractMediaRef(about?.imageSettings?.image);
   const supportImageRef = extractMediaRef(support?.imageSettings?.image);
+  const heroItems = getSectionItemsObject(hero);
   const headerMenu = enriched?.headerSettings?.menuItems?.length
     ? enriched.headerSettings.menuItems
     : [
@@ -705,9 +745,16 @@ export function buildFormFromData(data) {
     railBg: data?.railSettings?.backgroundColor || "#f08a16",
     railWidth: data?.railSettings?.width || "132px",
     showRailLogo: data?.railSettings?.showLogo !== false,
+    railLogo: {
+      id: extractMediaRef(data?.railSettings?.logo).id,
+      url: extractMediaRef(data?.railSettings?.logo).url || contactItems?.railLogoUrl || "",
+    },
     headerBg: data?.headerSettings?.backgroundColor || "#14365a",
     headerText: data?.headerSettings?.textColor || "#ffffff",
-    headerLogo: extractMediaRef(data?.headerSettings?.logo),
+    headerLogo: {
+      id: extractMediaRef(data?.headerSettings?.logo).id,
+      url: extractMediaRef(data?.headerSettings?.logo).url || contactItems?.headerLogoUrl || "",
+    },
     headerCtaText: data?.headerSettings?.ctaButton?.text || "Give Now",
     headerCtaLink: data?.headerSettings?.ctaButton?.link || "#support",
     headerMenu: headerMenu.map((item) => ({ label: item.label || "", link: item.link || "#" })),
@@ -718,11 +765,11 @@ export function buildFormFromData(data) {
     heroDescription: hero?.description || sampleHomePage.hero.description,
     heroImage: {
       id: heroImageRef.id,
-      url: heroImageRef.url || hero?.items?.heroImageUrl || "",
+      url: heroImageRef.url || heroItems?.heroImageUrl || "",
     },
     heroSlides: loadHeroSlides(hero, {
       id: heroImageRef.id,
-      url: heroImageRef.url || hero?.items?.heroImageUrl || "",
+      url: heroImageRef.url || heroItems?.heroImageUrl || "",
     }),
     heroPrimaryBtnText: hero?.buttonSettings?.text || sampleHomePage.hero.primaryCta.text,
     heroPrimaryBtnLink: hero?.buttonSettings?.link || sampleHomePage.hero.primaryCta.link,
@@ -741,31 +788,19 @@ export function buildFormFromData(data) {
       value: item.value || "",
       label: item.label || "",
     })),
-    ministriesEyebrow: services?.subtitle || sampleHomePage.ministries.eyebrow,
-    ministriesTitle: services?.title || sampleHomePage.ministries.title,
+    ministriesEyebrow: services?.subtitle || "",
+    ministriesTitle: services?.title || "",
     ministriesCtaText: services?.buttonSettings?.text || sampleHomePage.ministries.ctaText,
     ministriesCtaLink: services?.buttonSettings?.link || "#ministries",
-    ministryItems: loadMinistryItems(services).length
-      ? loadMinistryItems(services)
-      : sampleHomePage.ministries.items.map((item) => ({
-          title: item.title,
-          description: item.desc || item.description || "",
-          buttonText: item.cta || item.buttonText || "Learn More",
-          link: "#",
-          imageMedia: emptyMediaRef(),
-        })),
-    updatesEyebrow: updates?.subtitle || sampleHomePage.updates.eyebrow,
-    updatesTitle: updates?.title || sampleHomePage.updates.title,
+    ministryItems: loadMinistryItems(services),
+    updatesEyebrow: updates?.subtitle || "",
+    updatesTitle: updates?.title || "",
+    updatesNewsHeading: updatesFeatured?.newsHeading || "News & Announcements",
+    updatesVideosHeading: updatesFeatured?.videosHeading || "Featured Videos",
+    updatesAllNewsLink: updatesFeatured?.allNewsLink || "#",
+    updatesAllVideosLink: updatesFeatured?.allVideosLink || "#",
     newsItems: loadNewsItems(updates),
-    videoItems: loadVideoItems(updates).length
-      ? loadVideoItems(updates)
-      : sampleHomePage.updates.videos.map((item) => ({
-          title: item.title,
-          description: item.meta || item.description || "",
-          videoLink: item.link || "",
-          thumbnailMedia: emptyMediaRef(),
-          videoMedia: emptyMediaRef(),
-        })),
+    videoItems: loadVideoItems(updates),
     supportEyebrow: support?.subtitle || sampleHomePage.support.eyebrow,
     supportTitle: support?.title || sampleHomePage.support.title,
     supportDescription: support?.description || sampleHomePage.support.description,
@@ -785,7 +820,10 @@ export function buildFormFromData(data) {
       data?.footerSettings?.description ||
       "Seventh-day Adventist Church in Papua New Guinea, proclaiming everlasting hope through worship, education, health, media, and service.",
     footerCopyright: data?.footerSettings?.copyrightText || "© Papua New Guinea Union Mission",
-    footerLogo: extractMediaRef(data?.footerSettings?.logo),
+    footerLogo: {
+      id: extractMediaRef(data?.footerSettings?.logo).id,
+      url: extractMediaRef(data?.footerSettings?.logo).url || contactItems?.footerLogoUrl || "",
+    },
     footerBg: data?.footerSettings?.backgroundColor || "#031c39",
     footerText: data?.footerSettings?.textColor || "#d2dbea",
     footerLinks: footerLinks.map((item) => ({ label: item.label || "", link: item.link || "#" })),
@@ -843,6 +881,8 @@ export function buildPayloadFromForm(form, existingData) {
   const existingAboutItems =
     existingAbout?.items && typeof existingAbout.items === "object" ? existingAbout.items : {};
   const existingServices = getSection(existingData?.sections, "services");
+  const existingProducts = getSection(existingData?.sections, "products");
+  const existingProductsFeatured = parseFeaturedItems(existingProducts);
 
   const headerMenuFromPages = menuNodesToHeaderItems(buildMenuTree(ensurePageIds(navigationPages)));
   const footerLinksFromPages = navigationPages
@@ -869,7 +909,6 @@ export function buildPayloadFromForm(form, existingData) {
       description: item.description,
       videoLink: item.videoLink || "",
       thumbnailMedia: item.thumbnailMedia || emptyMediaRef(),
-      videoMedia: item.videoMedia || emptyMediaRef(),
     }));
 
   const newsItems = form.newsItems
@@ -881,8 +920,11 @@ export function buildPayloadFromForm(form, existingData) {
       imageMedia: item.imageMedia || emptyMediaRef(),
     }));
 
-  const heroSlides = (form.heroSlides || []).filter((slide) => slide.imageMedia?.url || mediaId(slide.imageMedia));
+  const heroSlides = (form.heroSlides || []).filter(
+    (slide) => slide.imageMedia?.url || resolveMediaId(slide.imageMedia),
+  );
   const primaryHeroImage = heroSlides[0]?.imageMedia || form.heroImage;
+  const existingHeroSlides = Array.isArray(existingHeroItems?.heroSlides) ? existingHeroItems.heroSlides : [];
 
   const sections = upsertSection(existingData?.sections || [], "hero", {
     displayOrder: 1,
@@ -892,12 +934,17 @@ export function buildPayloadFromForm(form, existingData) {
     imageSettings: serializeImageSettings(existingHero?.imageSettings, primaryHeroImage),
     items: {
       ...existingHeroItems,
-      heroImageUrl: normalizeStoredUrl(primaryHeroImage?.url || form.heroImage?.url || ""),
-      heroSlides: heroSlides.map((slide) => ({
-        imageUrl: normalizeStoredUrl(slide.imageMedia?.url || ""),
-        imageId: mediaId(slide.imageMedia),
-        durationSeconds: Number(slide.durationSeconds) > 0 ? Number(slide.durationSeconds) : 5,
-      })),
+      heroImageUrl: normalizeStoredUrl(
+        primaryHeroImage?.url || form.heroImage?.url || existingHeroItems?.heroImageUrl || "",
+      ),
+      heroSlides: heroSlides.map((slide, index) => {
+        const existingSlide = existingHeroSlides[index];
+        return {
+          imageUrl: normalizeStoredUrl(slide.imageMedia?.url || existingSlide?.imageUrl || ""),
+          imageId: resolveMediaId(slide.imageMedia) ?? existingSlide?.imageId ?? null,
+          durationSeconds: Number(slide.durationSeconds) > 0 ? Number(slide.durationSeconds) : 5,
+        };
+      }),
     },
     buttonSettings: mergeButtonSettings(existingHero?.buttonSettings, {
       text: form.heroPrimaryBtnText,
@@ -935,7 +982,8 @@ export function buildPayloadFromForm(form, existingData) {
       description: item.description,
       buttonText: item.buttonText,
       link: item.link,
-      image: mediaId(item.imageMedia),
+      image: resolveMediaId(item.imageMedia),
+      imageMedia: item.imageMedia,
     })),
     items: ministryItems.map((item) => ({
       title: item.title,
@@ -943,45 +991,58 @@ export function buildPayloadFromForm(form, existingData) {
       buttonText: item.buttonText,
       link: item.link,
       image: normalizeStoredUrl(item.imageMedia?.url || ""),
+      imageId: resolveMediaId(item.imageMedia),
     })),
     buttonSettings: mergeButtonSettings(existingServices?.buttonSettings, {
       text: form.ministriesCtaText,
       link: form.ministriesCtaLink,
-    }, { backgroundColor: "transparent", textColor: "#a85e1f" }),
+    }, { backgroundColor: "transparent", textColor: form.primaryColor || "#a85e1f" }),
   });
 
   const sections4 = upsertSection(sections3, "products", {
     displayOrder: 4,
     subtitle: form.updatesEyebrow,
     title: form.updatesTitle,
+    featuredItems: {
+      ...existingProductsFeatured,
+      newsHeading: form.updatesNewsHeading || "News & Announcements",
+      videosHeading: form.updatesVideosHeading || "Featured Videos",
+      allNewsLink: form.updatesAllNewsLink || "#",
+      allVideosLink: form.updatesAllVideosLink || "#",
+    },
     newsItems: newsItems.map((item) => ({
       tag: item.tag,
       date: item.date,
       title: item.title,
-      image: mediaId(item.imageMedia),
+      image: resolveMediaId(item.imageMedia),
+      imageMedia: item.imageMedia,
     })),
     items: newsItems.map((item) => ({
       tag: item.tag,
       date: item.date,
       title: item.title,
       image: normalizeStoredUrl(item.imageMedia?.url || ""),
+      imageId: resolveMediaId(item.imageMedia),
     })),
     videoItems: videoItems.map((item) => ({
       title: item.title,
       description: item.description,
-      link: item.videoLink,
-      thumbnail: mediaId(item.thumbnailMedia),
-      video: mediaId(item.videoMedia),
+      link: item.videoLink || "",
+      thumbnail: resolveMediaId(item.thumbnailMedia),
+      thumbnailMedia: item.thumbnailMedia,
     })),
     mediaItems: videoItems.map((item) => ({
       title: item.title,
       description: item.description,
       image: normalizeStoredUrl(item.thumbnailMedia?.url || ""),
-      videoUrl: normalizeStoredUrl(item.videoMedia?.url || item.videoLink || ""),
+      imageId: resolveMediaId(item.thumbnailMedia),
+      videoUrl: normalizeStoredUrl(item.videoLink || ""),
     })),
   });
 
   const existingContact = getSection(existingData?.sections, "contact");
+  const existingContactItems =
+    existingContact?.items && typeof existingContact.items === "object" ? existingContact.items : {};
 
   const sections5 = upsertSection(sections4, "contact", {
     displayOrder: 5,
@@ -990,7 +1051,11 @@ export function buildPayloadFromForm(form, existingData) {
     description: form.supportDescription,
     imageSettings: serializeImageSettings(existingContact?.imageSettings, form.supportImage),
     items: {
+      ...existingContactItems,
       backgroundImageUrl: normalizeStoredUrl(form.supportImage?.url || ""),
+      headerLogoUrl: normalizeStoredUrl(form.headerLogo?.url || ""),
+      footerLogoUrl: normalizeStoredUrl(form.footerLogo?.url || ""),
+      railLogoUrl: normalizeStoredUrl(form.railLogo?.url || ""),
       sitePages: storedSitePages,
       homepageBlocks: serializeHomepageBlocks(form.homepageBlocks || []),
       homepageBlocksPlacement: form.homepageBlocksPlacement || "after-ministries",
@@ -1009,7 +1074,7 @@ export function buildPayloadFromForm(form, existingData) {
       ...pickFields(existingData?.headerSettings, ["fontFamily", "stickyHeader"]),
       backgroundColor: form.headerBg,
       textColor: form.headerText,
-      logo: mediaId(form.headerLogo),
+      logo: resolveMediaId(form.headerLogo),
       menuItems: serializeMenuItems(
         headerMenuFromPages.length ? headerMenuFromPages : form.headerMenu,
       ),
