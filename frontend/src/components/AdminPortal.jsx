@@ -17,6 +17,7 @@ import MissionSectionEditor from "./admin/MissionSectionEditor";
 import MinistriesSectionEditor from "./admin/MinistriesSectionEditor";
 import UpdatesSectionEditor from "./admin/UpdatesSectionEditor";
 import SupportSectionEditor from "./admin/SupportSectionEditor";
+import HomepageBuilderEditor from "./admin/HomepageBuilderEditor";
 import FooterSectionEditor from "./admin/FooterSectionEditor";
 import SeoSectionEditor from "./admin/SeoSectionEditor";
 import { findPanel } from "./admin/panelConfig";
@@ -40,6 +41,7 @@ const panels = [
   { id: "header", label: "Header & Rail", section: "Header" },
   { id: "pages", label: "Pages & Navigation", section: "Menus" },
   { id: "hero", label: "Hero", section: "Hero" },
+  { id: "homepage-builder", label: "Add Sections", section: "Builder" },
   { id: "mission", label: "Mission", section: "Mission" },
   { id: "ministries", label: "Ministries", section: "Ministries" },
   { id: "updates", label: "Updates & Media", section: "News & Videos" },
@@ -455,7 +457,7 @@ export default function AdminPortal({ data, onSaved }) {
               <button type="button" className="admin-icon-btn admin-mobile-menu" onClick={() => setMobileNavOpen(true)} aria-label="Open menu">
                 <Menu size={18} />
               </button>
-              <div>
+              <div className="admin-topbar-title-block">
                 <p className="admin-breadcrumb">Homepage / {activeMeta.label}</p>
                 <h1>{activeMeta.label}</h1>
                 <p className="admin-topbar-sub">
@@ -464,30 +466,37 @@ export default function AdminPortal({ data, onSaved }) {
                 </p>
               </div>
             </div>
-            <div className="admin-topbar-actions">
+
+            <div className="admin-topbar-toolbar">
               <span className={hasChanges ? "status-pill dirty" : "status-pill clean"}>
                 {hasChanges ? "Unsaved changes" : "All changes saved"}
               </span>
-              <button type="button" className="admin-icon-btn" onClick={() => setDarkMode((v) => !v)} aria-label="Toggle dark mode">
-                {darkMode ? <Sun size={16} /> : <Moon size={16} />}
-              </button>
-              <button type="button" className="admin-ghost-btn" disabled={reloading} onClick={reloadFromStrapiState}>
-                <RefreshCw size={16} />
-                {reloading ? "Reloading..." : "Reload"}
-              </button>
-              <button className="admin-ghost-btn" disabled={saving || publishing || restoring} onClick={onSaveDraft} type="button">
-                <Save size={16} />
-                {saving ? "Saving..." : "Save to Website"}
-              </button>
-              <button className="admin-primary-btn" disabled={saving || publishing || restoring} onClick={onPublishLive} type="button">
-                <Save size={16} />
-                {publishing ? "Publishing..." : "Publish Live"}
-              </button>
-              <button type="button" className="admin-ghost-btn" onClick={onRestoreLastLive} disabled={saving || publishing || restoring}>
-                <RefreshCw size={16} />
-                {restoring ? "Restoring..." : "Restore Last Live"}
-              </button>
-              <button type="button" className="admin-ghost-btn" onClick={onLogout}>
+
+              <div className="admin-topbar-btn-group" role="toolbar" aria-label="Editor actions">
+                <button type="button" className="admin-icon-btn" onClick={() => setDarkMode((v) => !v)} aria-label="Toggle dark mode">
+                  {darkMode ? <Sun size={16} /> : <Moon size={16} />}
+                </button>
+                <button type="button" className="admin-ghost-btn" disabled={reloading} onClick={reloadFromStrapiState}>
+                  <RefreshCw size={16} />
+                  {reloading ? "Reloading..." : "Reload"}
+                </button>
+                <button className="admin-ghost-btn" disabled={saving || publishing || restoring} onClick={onSaveDraft} type="button">
+                  <Save size={16} />
+                  {saving ? "Saving..." : "Save to Website"}
+                </button>
+                <button className="admin-primary-btn" disabled={saving || publishing || restoring} onClick={onPublishLive} type="button">
+                  <Save size={16} />
+                  {publishing ? "Publishing..." : "Publish Live"}
+                </button>
+                <button type="button" className="admin-ghost-btn" onClick={onRestoreLastLive} disabled={saving || publishing || restoring}>
+                  <RefreshCw size={16} />
+                  {restoring ? "Restoring..." : "Restore Last Live"}
+                </button>
+              </div>
+
+              <span className="admin-topbar-toolbar-sep" aria-hidden="true" />
+
+              <button type="button" className="admin-ghost-btn admin-topbar-logout-btn" onClick={onLogout}>
                 <LogOut size={16} />
                 Logout
               </button>
@@ -530,6 +539,9 @@ export default function AdminPortal({ data, onSaved }) {
           )}
           {activePanel === "hero" && (
             <HeroSectionEditor form={form} updateField={updateField} updateListField={updateListField} apiToken={apiToken} />
+          )}
+          {activePanel === "homepage-builder" && (
+            <HomepageBuilderEditor form={form} updateField={updateField} apiToken={apiToken} />
           )}
           {activePanel === "mission" && (
             <MissionSectionEditor form={form} updateField={updateField} updateListField={updateListField} apiToken={apiToken} />

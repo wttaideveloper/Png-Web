@@ -2,6 +2,11 @@ import { sampleHomePage } from "../../mock/sampleHomePage";
 import { slugify, enrichHomePageData, getStoredSitePagesRaw } from "../../utils/pageUtils";
 import { buildMenuTree, createPageId, ensurePageIds, menuNodesToHeaderItems } from "../../utils/menuUtils";
 import { ensurePageSections, serializePageSections } from "../../utils/pageSections";
+import {
+  getHomepageBlocksFromData,
+  getHomepageBlocksPlacementFromData,
+  serializeHomepageBlocks,
+} from "../../utils/homepageBlocks";
 import { emptyMediaRef, extractMediaRef } from "../../styles/themeUtils";
 
 export { enrichHomePageData } from "../../utils/pageUtils";
@@ -774,6 +779,8 @@ export function buildFormFromData(data) {
     ).map((item) => ({ amount: item.amount || item })),
     supportButtonText: support?.buttonSettings?.text || sampleHomePage.support.cta,
     supportButtonLink: support?.buttonSettings?.link || "#support",
+    homepageBlocks: getHomepageBlocksFromData(enriched),
+    homepageBlocksPlacement: getHomepageBlocksPlacementFromData(enriched),
     footerDescription:
       data?.footerSettings?.description ||
       "Seventh-day Adventist Church in Papua New Guinea, proclaiming everlasting hope through worship, education, health, media, and service.",
@@ -975,8 +982,6 @@ export function buildPayloadFromForm(form, existingData) {
   });
 
   const existingContact = getSection(existingData?.sections, "contact");
-  const existingContactItems =
-    existingContact?.items && typeof existingContact.items === "object" ? existingContact.items : {};
 
   const sections5 = upsertSection(sections4, "contact", {
     displayOrder: 5,
@@ -985,9 +990,10 @@ export function buildPayloadFromForm(form, existingData) {
     description: form.supportDescription,
     imageSettings: serializeImageSettings(existingContact?.imageSettings, form.supportImage),
     items: {
-      ...existingContactItems,
       backgroundImageUrl: normalizeStoredUrl(form.supportImage?.url || ""),
       sitePages: storedSitePages,
+      homepageBlocks: serializeHomepageBlocks(form.homepageBlocks || []),
+      homepageBlocksPlacement: form.homepageBlocksPlacement || "after-ministries",
     },
     donationItems: form.supportAmounts.filter((item) => item.amount),
     buttonSettings: mergeButtonSettings(existingContact?.buttonSettings, {

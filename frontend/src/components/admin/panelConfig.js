@@ -3,6 +3,7 @@ import {
   ExternalLink,
   Heart,
   LayoutDashboard,
+  LayoutGrid,
   Menu,
   Newspaper,
   Palette,
@@ -35,6 +36,7 @@ export const panelGroups = [
     label: "Homepage sections",
     panels: [
       { id: "hero", label: "Hero", icon: Sparkles, hint: "Top banner" },
+      { id: "homepage-builder", label: "Add Sections", icon: LayoutGrid, hint: "Visual block builder" },
       { id: "mission", label: "Mission", icon: Target, hint: "Mission & stats" },
       { id: "ministries", label: "Ministries", icon: BookOpen, hint: "Ministry cards" },
       { id: "updates", label: "Updates & Media", icon: Newspaper, hint: "News & videos" },
@@ -55,6 +57,7 @@ export function findPanel(id) {
 }
 
 export const quickActions = [
+  { id: "homepage-builder", label: "Add homepage sections", description: "Drag-free visual builder for banners, text, photos, and buttons.", icon: LayoutGrid },
   { id: "pages", label: "Edit menu links", description: "Add, reorder, and hide pages in the header or footer.", icon: Menu },
   { id: "hero", label: "Update hero banner", description: "Change the main headline, image, and call-to-action buttons.", icon: Sparkles },
   { id: "updates", label: "Publish news & videos", description: "Add articles and YouTube or uploaded videos.", icon: Newspaper },

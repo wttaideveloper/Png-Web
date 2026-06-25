@@ -1,4 +1,5 @@
 import { getImageUrl } from "../styles/themeUtils";
+import { getYouTubeEmbedUrl, normalizeVideoSlots } from "../utils/videoEmbed";
 
 function paragraphs(text = "") {
   return text
@@ -13,24 +14,17 @@ function alignClass(align) {
   return " is-left";
 }
 
-function getYouTubeEmbedUrl(rawUrl = "") {
-  if (!rawUrl) return "";
-  try {
-    const url = new URL(rawUrl);
-    const host = url.hostname.toLowerCase();
-    if (host.includes("youtu.be")) {
-      const id = url.pathname.replace("/", "");
-      return id ? `https://www.youtube.com/embed/${id}` : "";
-    }
-    if (host.includes("youtube.com")) {
-      if (url.pathname.startsWith("/embed/")) return rawUrl;
-      const id = url.searchParams.get("v");
-      return id ? `https://www.youtube.com/embed/${id}` : "";
-    }
-  } catch {
-    return "";
-  }
-  return "";
+function VideoEmbed({ videoUrl, caption, title }) {
+  const embed = getYouTubeEmbedUrl(videoUrl);
+  if (!embed) return null;
+  return (
+    <figure className="page-block-video-item">
+      <div className="page-block-video-frame">
+        <iframe src={embed} title={caption || title || "Video"} allowFullScreen loading="lazy" />
+      </div>
+      {caption ? <figcaption>{caption}</figcaption> : null}
+    </figure>
+  );
 }
 
 export default function PageSectionRenderer({ section }) {
@@ -121,15 +115,15 @@ export default function PageSectionRenderer({ section }) {
       );
 
     case "video": {
-      const embed = getYouTubeEmbedUrl(section.videoUrl);
-      if (!embed) return null;
+      const { columnCount, videos } = normalizeVideoSlots(section);
+      const hasAny = videos.some((item) => getYouTubeEmbedUrl(item.videoUrl));
+      if (!hasAny) return null;
       return (
-        <figure className={`page-block page-block-video${alignClass(section.align)}`}>
-          <div className="page-block-video-frame">
-            <iframe src={embed} title={section.caption || "Video"} allowFullScreen loading="lazy" />
-          </div>
-          {section.caption ? <figcaption>{section.caption}</figcaption> : null}
-        </figure>
+        <div className={`page-block page-block-video-grid page-block-video-grid--${columnCount}${alignClass(section.align)}`}>
+          {videos.map((item, index) => (
+            <VideoEmbed key={`video-${index}`} videoUrl={item.videoUrl} caption={item.caption} title={`Video ${index + 1}`} />
+          ))}
+        </div>
       );
     }
 

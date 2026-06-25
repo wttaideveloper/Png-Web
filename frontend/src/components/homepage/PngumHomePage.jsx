@@ -1,5 +1,10 @@
 import { sampleHomePage } from "../../mock/sampleHomePage";
 import HeroSlider from "./HeroSlider";
+import HomepageCustomBlocks from "./HomepageCustomBlocks";
+import {
+  getHomepageBlocksFromData,
+  getHomepageBlocksPlacementFromData,
+} from "../../utils/homepageBlocks";
 import { getImageUrl, hexToRgba, mergeItems, parseButtonStyle, parseSectionStyle, parseTypography } from "../../styles/themeUtils";
 
 function byName(sections, sectionName) {
@@ -173,6 +178,13 @@ export default function PngumHomePage({ sections = [] }) {
   const ministriesSection = byName(sections, "services") || byName(sections, "categories");
   const updatesSection = byName(sections, "products") || byName(sections, "testimonials");
   const supportSection = byName(sections, "contact");
+  const homepageBlocks = getHomepageBlocksFromData({ sections });
+  const homepagePlacement = getHomepageBlocksPlacementFromData({ sections });
+
+  function renderCustomBlocks(placement) {
+    if (!homepageBlocks.length || homepagePlacement !== placement) return null;
+    return <HomepageCustomBlocks blocks={homepageBlocks} />;
+  }
 
   const [heroTop, heroBottom] = titlePair(hero, sampleHomePage.hero.headingTop, sampleHomePage.hero.headingBottom);
   const heroStyle = parseSectionStyle(hero);
@@ -262,6 +274,8 @@ export default function PngumHomePage({ sections = [] }) {
         </div>
       </section>
 
+      {renderCustomBlocks("after-mission")}
+
       <section className="pngum-ministries" id="ministries" aria-labelledby="ministries-heading" style={parseSectionStyle(ministriesSection)}>
         <div className="container">
           <div className="section-head">
@@ -291,6 +305,8 @@ export default function PngumHomePage({ sections = [] }) {
           </div>
         </div>
       </section>
+
+      {renderCustomBlocks("after-ministries")}
 
       <section className="pngum-updates" id="updates" aria-labelledby="updates-heading" style={parseSectionStyle(updatesSection)}>
         <div className="container updates-layout">
@@ -329,6 +345,10 @@ export default function PngumHomePage({ sections = [] }) {
           </div>
         </div>
       </section>
+
+      {renderCustomBlocks("after-updates")}
+
+      {renderCustomBlocks("before-support")}
 
       <section className="pngum-support" id="support" aria-labelledby="support-heading" style={supportStyle}>
         <div className="container">
